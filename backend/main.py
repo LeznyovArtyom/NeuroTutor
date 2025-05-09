@@ -169,6 +169,9 @@ async def get_info_about_me(token: Annotated[str, Depends(oauth2_scheme)], sessi
     if user:
         return JSONResponse({"User": {
             "id": user.id,
+            "last_name": user.last_name,
+            "first_name": user.first_name,
+            "role": user.role,
             "login": user.login
         }})
     return JSONResponse({"error": "Пользователь не найден"}, status_code=404)
@@ -201,7 +204,9 @@ async def update_user(user_data: UserUpdate, token: Annotated[str, Depends(oauth
     Обновляет информацию о текущем пользователе
     Требуется авторизация с использованием токена доступа.
 
-    Поля для обновления: 
+    Поля для обновления:
+    - **last_name**: Фамилия пользователя
+    - **first_name**: Имя пользователя
     - **login**: Логин пользователя
     - **password**: Пароль
     """
