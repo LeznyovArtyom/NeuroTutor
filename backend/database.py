@@ -1,8 +1,7 @@
 from config import data
-from contextlib import contextmanager
 from sqlmodel import SQLModel, Session, create_engine
 from sqlalchemy import create_engine, text
-from models import User, ChatSession, Message
+import models
 
 DATABASE_SERVER_URL = f"mysql+pymysql://{data['user']}:{data['password']}@{data['host']}:{data['port']}"
 DATABASE_URL = f"mysql+pymysql://{data['user']}:{data['password']}@{data['host']}:{data['port']}/{data['database']}"
