@@ -8,12 +8,12 @@ from typing import Annotated
 from passlib.context import CryptContext
 import jwt
 from database import get_session
-from models import User as UserModel, ChatSession as ChatSessionModel, Message as MessageModel
+from models import User as UserModel, Chat as ChatModel, Message as MessageModel, Discipline as DisciplineModel, Document as DocumentModel, Work as WorkModel
 from sqlmodel import Session, select
 from datetime import datetime, timedelta, timezone
 
 
-app = FastAPI(title="API NeuroTutor", description="API для пользователями и сессиями чатов", version="3.1.0")
+app = FastAPI(title="API NeuroTutor", description="API для цифрового помощника", version="3.1.0")
 
 
 app.add_middleware(
@@ -31,11 +31,16 @@ class Token(BaseModel):
 
 
 class User(BaseModel):
+    last_name: str
+    first_name: str
     login: str
+    role: str
     password: str
 
 
 class UserUpdate(BaseModel):
+    last_name: str | None = None
+    first_name: str | None = None
     login: str | None = None
     password: str | None = None
 
@@ -103,6 +108,9 @@ async def register_new_user(user_data: User, session: Session = Depends(get_sess
     """
     Регистрирует нового пользователя в системе.
     
+    - **last_name**: фамилия пользователя
+    - **first_name**: имя пользователя
+    - **role**: роль пользователя
     - **login**: уникальный логин
     - **password**: пароль пользователя
     """
@@ -115,6 +123,9 @@ async def register_new_user(user_data: User, session: Session = Depends(get_sess
     hashed_password = get_password_hash(user_data.password)
 
     new_user = UserModel(
+        last_name=user_data.last_name,
+        first_name=user_data.first_name,
+        role=user_data.role,
         login=user_data.login,
         password=hashed_password
     )

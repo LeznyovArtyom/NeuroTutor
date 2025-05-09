@@ -38,7 +38,8 @@ class User(SQLModel, table=True):
     password: str = Field(max_length=100)
     last_name: str = Field(max_length=50)
     first_name: str = Field(max_length=50)
-    role: UserRole = Field(default=UserRole.STUDENT)
+    role: UserRole = Field()
+    # role: UserRole = Field(default=UserRole.STUDENT)
 
     disciplines: List["Discipline"] = Relationship(back_populates="teacher", sa_relationship_kwargs={"cascade": "all, delete"})
     works: List["Work"] = Relationship(
