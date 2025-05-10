@@ -8,9 +8,10 @@ from typing import Annotated
 from passlib.context import CryptContext
 import jwt
 from database import get_session
-from models import User as UserModel, Chat as ChatModel, Message as MessageModel, Discipline as DisciplineModel, Document as DocumentModel, Work as WorkModel
+from models import User as UserModel, Chat as ChatModel, Message as MessageModel, Discipline as DisciplineModel, Document as DocumentModel, Work as WorkModel, TeacherStudent as TeacherStudentModel, UserWork as UserWorkModel
 from sqlmodel import Session, select
 from datetime import datetime, timedelta, timezone
+from typing import Optional, List
 
 
 app = FastAPI(title="API NeuroTutor", description="API для цифрового помощника", version="3.1.0")
@@ -38,6 +39,11 @@ class User(BaseModel):
     password: str
 
 
+class UserLogin(BaseModel):
+    login: str
+    password: str
+
+
 class UserUpdate(BaseModel):
     last_name: str | None = None
     first_name: str | None = None
@@ -45,7 +51,26 @@ class UserUpdate(BaseModel):
     password: str | None = None
 
 
-class ChatSessionUpdate(BaseModel):
+class Document(BaseModel):
+    name: str
+    data: bytes
+
+
+class Discipline(BaseModel):
+    name: str
+    documents: Optional[List[Document]] = None
+
+
+class DisciplineUpdate(BaseModel):
+    name: Optional[str] = None
+    documents: Optional[List[Document]] = None
+
+
+
+
+
+
+class ChatUpdate(BaseModel):
     title: str | None = None
     mode: str | None = None
 
@@ -139,7 +164,7 @@ async def register_new_user(user_data: User, session: Session = Depends(get_sess
 
 # Авторизовать пользователя
 @app.post("/users/login", summary="Авторизация пользователя", tags=["Пользователи"])
-async def login_user(user_data: User, session: Session = Depends(get_session)):
+async def login_user(user_data: UserLogin, session: Session = Depends(get_session)):
     """
     Авторизует пользователя и возвращает токен доступа.
 
@@ -242,6 +267,207 @@ async def update_user(user_data: UserUpdate, token: Annotated[str, Depends(oauth
     return JSONResponse({"message": "Пользователь успешно обновлен"}, status_code=200)
 
 
+# Получить все дисциплины текущего преподавателя
+@app.get("/users/me/disciplines", summary="Получить все дисциплины текущего преподавателя", tags=["Дисциплины"])
+async def get_user_disciplines(token: Annotated[str, Depends(oauth2_scheme)], session: Session = Depends(get_session)):
+    """
+    Возвращает список всех дисциплин текущего преподавателя.
+    Требуется авторизация с использованием токена доступа.
+    """
+    user_login = decode_access_token(token)
+
+    user = session.exec(select(UserModel).where(UserModel.login == user_login)).first()
+
+    if not user:
+        raise HTTPException(status_code=404, detail="Пользователь не найден")
+
+    disciplines = session.exec(select(DisciplineModel).where(DisciplineModel.teacher_id == user.id)).all()
+
+    disciplines_data = [
+        {
+            "id": discipline.id,
+            "name": discipline.name,
+        } for discipline in disciplines
+    ]
+
+    return JSONResponse({"Disciplines": disciplines_data}, status_code=200)
+
+
+# Добавить новую дисциплину текущему преподавателю
+@app.post("/users/me/disciplines/add", summary="Добавить новую дисциплину текущему преподавателю", tags=["Дисциплины"])
+async def add_new_discipline(discipline_data: Discipline, token: Annotated[str, Depends(oauth2_scheme)], session: Session = Depends(get_session)):
+    """
+    Добавляет новую дисциплину текущему преподавателю.
+    Требуется авторизация с использованием токена доступа.
+
+    Поля для добавления дисциплины:
+    - **name**: Название дисциплины
+    - **documents**: Список документов (опционально)
+    """
+    user_login = decode_access_token(token)
+
+    user = session.exec(select(UserModel).where(UserModel.login == user_login)).first()
+
+    if not user:
+        raise HTTPException(status_code=404, detail="Пользователь не найден")
+
+    new_discipline = DisciplineModel(
+        name=discipline_data.name,
+        teacher_id=user.id
+    )
+
+    session.add(new_discipline)
+    session.commit()
+    session.refresh(new_discipline)
+
+    if discipline_data.documents:
+        for document in discipline_data.documents:
+            new_document = DocumentModel(
+                name=document.name,
+                data=document.data,
+                discipline_id=new_discipline.id
+            )
+            session.add(new_document)
+        session.commit()
+        session.refresh(new_document)
+
+    return JSONResponse({"message": "Дисциплина успешно добавлена"}, status_code=201)
+
+
+# Получить информацию о дисциплине текущего преподавателя
+@app.get("/users/me/disciplines/{discipline_id}", summary="Получить информацию о дисциплине текущего преподавателя", tags=["Дисциплины"])
+async def get_discipline_info(discipline_id: int, token: Annotated[str, Depends(oauth2_scheme)], session: Session = Depends(get_session)):
+    """
+    Возвращает информацию о дисциплине текущего преподавателя.
+    Требуется авторизация с использованием токена доступа.
+
+    Параметр пути: **discipline_id**
+    """
+    user_login = decode_access_token(token)
+
+    user = session.exec(select(UserModel).where(UserModel.login == user_login)).first()
+
+    if not user:
+        raise HTTPException(status_code=404, detail="Пользователь не найден")
+
+    discipline = session.exec(select(DisciplineModel).where(DisciplineModel.id == discipline_id, DisciplineModel.teacher_id == user.id)).first()
+
+    if not discipline:
+        raise HTTPException(status_code=404, detail="Дисциплина не найдена")
+
+    return JSONResponse({"Discipline": {
+        "id": discipline.id,
+        "name": discipline.name,
+        "documents": [
+            {
+                "id": document.id,
+                "name": document.name,
+                "data": document.data
+            } for document in discipline.documents
+        ]
+    }}, status_code=200)
+
+
+# Обновить информацию о дисциплине текущего преподавателя
+@app.put("/users/me/disciplines/{discipline_id}/update", summary="Обновить информацию о дисциплине текущего преподавателя", tags=["Дисциплины"])
+async def update_discipline(discipline_id: int, discipline_data: DisciplineUpdate, token: Annotated[str, Depends(oauth2_scheme)], session: Session = Depends(get_session)):
+    """
+    Обновляет информацию о дисциплине текущего преподавателя.
+    Требуется авторизация с использованием токена доступа.
+
+    Поля для обновления дисциплины:
+    - **name**: Название дисциплины (опционально)
+    - **documents**: Список документов (опционально)
+    """
+    user_login = decode_access_token(token)
+
+    user = session.exec(select(UserModel).where(UserModel.login == user_login)).first()
+
+    if not user:
+        raise HTTPException(status_code=404, detail="Пользователь не найден")
+
+    discipline = session.exec(select(DisciplineModel).where(DisciplineModel.id == discipline_id, DisciplineModel.teacher_id == user.id)).first()
+
+    if not discipline:
+        raise HTTPException(status_code=404, detail="Дисциплина не найдена")
+
+    if discipline_data.name:
+        discipline.name = discipline_data.name
+
+    if discipline_data.documents:
+        for document in discipline_data.documents:
+            new_document = DocumentModel(
+                name=document.name,
+                data=document.data,
+                discipline_id=discipline.id
+            )
+            session.add(new_document)
+
+    session.add(discipline)
+    session.commit()
+
+    return JSONResponse({"message": "Дисциплина успешно обновлена"}, status_code=200)
+
+
+# Удалить дисциплину текущего преподавателя
+@app.delete("/users/me/disciplines/{discipline_id}/delete", summary="Удалить дисциплину текущего преподавателя", tags=["Дисциплины"])
+async def delete_discipline(discipline_id: int, token: Annotated[str, Depends(oauth2_scheme)], session: Session = Depends(get_session)):
+    """
+    Удаляет дисциплину текущего преподавателя.
+    Требуется авторизация с использованием токена доступа.
+
+    Параметр пути: **discipline_id**
+    """
+    user_login = decode_access_token(token)
+
+    user = session.exec(select(UserModel).where(UserModel.login == user_login)).first()
+
+    if not user:
+        raise HTTPException(status_code=404, detail="Пользователь не найден")
+
+    discipline = session.exec(select(DisciplineModel).where(DisciplineModel.id == discipline_id, DisciplineModel.teacher_id == user.id)).first()
+
+    if not discipline:
+        raise HTTPException(status_code=404, detail="Дисциплина не найдена")
+
+    session.delete(discipline)
+    session.commit()
+
+    return JSONResponse({"message": "Дисциплина успешно удалена"}, status_code=200)
+
+
+# Получить все работы дисциплины
+
+# Добавить новую работу к дисциплине
+
+# Удалить работу из дисциплины
+
+# Получить информацию о работе
+
+# Обновить информацию о работе
+
+# Добавить студента к работе
+
+# Удалить студента из работы
+
+# Получить всех студентов работы
+
+# Получить чат в режиме Помощь
+
+# Получить чат в режиме Сдача работы
+
+
+
+
+
+
+
+
+
+
+
+
+
 # Получить все сессии чата текущего пользователя
 @app.get("/users/me/chat_sessions", summary="Получить все сессии чата текущего пользователя", tags=["Сессии чата"])
 async def get_user_chat_sessions(token: Annotated[str, Depends(oauth2_scheme)], session: Session = Depends(get_session)):
@@ -256,7 +482,7 @@ async def get_user_chat_sessions(token: Annotated[str, Depends(oauth2_scheme)], 
     if not user:
         raise HTTPException(status_code=404, detail="Пользователь не найден")
 
-    chat_sessions = session.exec(select(ChatSessionModel).where(ChatSessionModel.user_id == user.id)).all()
+    chat_sessions = session.exec(select(ChatModel).where(ChatModel.user_id == user.id)).all()
 
     chat_sessions_data = [
         {
@@ -267,7 +493,7 @@ async def get_user_chat_sessions(token: Annotated[str, Depends(oauth2_scheme)], 
         } for chat_session in chat_sessions
     ]
 
-    return JSONResponse({"ChatSessions": chat_sessions_data}, status_code=200)
+    return JSONResponse({"Chats": chat_sessions_data}, status_code=200)
 
 
 # Добавить новую сессию чата текущему пользователю
@@ -284,7 +510,7 @@ async def add_new_chat_session(token: Annotated[str, Depends(oauth2_scheme)], se
     if not user:
         raise HTTPException(status_code=404, detail="Пользователь не найден")
 
-    new_chat_session = ChatSessionModel(
+    new_chat_session = ChatModel(
         title="Новый чат",
         mode="base",
         user_id=user.id
@@ -294,7 +520,7 @@ async def add_new_chat_session(token: Annotated[str, Depends(oauth2_scheme)], se
     session.commit()
     session.refresh(new_chat_session)
 
-    return JSONResponse({"message": "Сессия чата успешно добавлена", "newChatSessionId": new_chat_session.id}, status_code=201)
+    return JSONResponse({"message": "Сессия чата успешно добавлена", "newChatId": new_chat_session.id}, status_code=201)
 
 
 # Удалить сессию чата
@@ -313,7 +539,7 @@ async def delete_chat_session(session_id: int, token: Annotated[str, Depends(oau
     if not user:
         raise HTTPException(status_code=404, detail="Пользователь не найден")
 
-    chat_session = session.exec(select(ChatSessionModel).where(ChatSessionModel.id == session_id, ChatSessionModel.user_id == user.id)).first()
+    chat_session = session.exec(select(ChatModel).where(ChatModel.id == session_id, ChatModel.user_id == user.id)).first()
 
     if not chat_session:
         raise HTTPException(status_code=404, detail="Сессия чата не найдена")
@@ -326,7 +552,7 @@ async def delete_chat_session(session_id: int, token: Annotated[str, Depends(oau
 
 # Обновить информацию о сессии чата
 @app.put("/users/me/chat_sessions/{session_id}/update", summary="Обновить информацию о сессии чата", tags=["Сессии чата"])
-async def update_chat_session(session_id: int, chat_session_data: ChatSessionUpdate, token: Annotated[str, Depends(oauth2_scheme)], session: Session = Depends(get_session)):
+async def update_chat_session(session_id: int, chat_session_data: ChatUpdate, token: Annotated[str, Depends(oauth2_scheme)], session: Session = Depends(get_session)):
     """
     Обновляет информацию о сессии чата по её ID.
     Требуется авторизация с использованием токена доступа.
@@ -342,7 +568,7 @@ async def update_chat_session(session_id: int, chat_session_data: ChatSessionUpd
     if not user:
         raise HTTPException(status_code=404, detail="Пользователь не найден")
 
-    chat_session = session.exec(select(ChatSessionModel).where(ChatSessionModel.id == session_id, ChatSessionModel.user_id == user.id)).first()
+    chat_session = session.exec(select(ChatModel).where(ChatModel.id == session_id, ChatModel.user_id == user.id)).first()
 
     if not chat_session:
         raise HTTPException(status_code=404, detail="Сессия чата не найдена")
@@ -374,7 +600,7 @@ async def get_chat_session_messages(session_id: int, token: Annotated[str, Depen
     if not user:
         raise HTTPException(status_code=404, detail="Пользователь не найден")
 
-    chat_session = session.exec(select(ChatSessionModel).where(ChatSessionModel.id == session_id, ChatSessionModel.user_id == user.id)).first()
+    chat_session = session.exec(select(ChatModel).where(ChatModel.id == session_id, ChatModel.user_id == user.id)).first()
 
     if not chat_session:
         raise HTTPException(status_code=404, detail="Сессия чата не найдена")
@@ -411,7 +637,7 @@ async def add_new_message(session_id: int, message_data: Message, token: Annotat
     if not user:
         raise HTTPException(status_code=404, detail="Пользователь не найден")
 
-    chat_session = session.exec(select(ChatSessionModel).where(ChatSessionModel.id == session_id, ChatSessionModel.user_id == user.id)).first()
+    chat_session = session.exec(select(ChatModel).where(ChatModel.id == session_id, ChatModel.user_id == user.id)).first()
 
     if not chat_session:
         raise HTTPException(status_code=404, detail="Сессия чата не найдена")
@@ -450,7 +676,7 @@ async def chat_answer(request: ChatRequest, token: Annotated[str, Depends(oauth2
     if not user:
         raise HTTPException(status_code=404, detail="Пользователь не найден")
 
-    chat_sess = session.exec(select(ChatSessionModel).where(ChatSessionModel.id == request.chat_id, ChatSessionModel.user_id == user.id)).first()
+    chat_sess = session.exec(select(ChatModel).where(ChatModel.id == request.chat_id, ChatModel.user_id == user.id)).first()
     if not chat_sess:
         raise HTTPException(status_code=404, detail="Сессия чата не найдена")
 
