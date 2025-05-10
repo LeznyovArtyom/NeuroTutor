@@ -6,13 +6,26 @@
                     @submit.prevent="registerUser">
                     <div class="header d-flex justify-content-center mb-3" style="font-size: 36px;">Регистрация</div>
                     <div class="line w-100" style="background-color: #EFEFEF; height: 1px"></div>
-                    <input type="text" placeholder="Логин" class="form-control w-100 rounded-4" v-model="formData.login"
-                        style="height: 48px; font-size: inherit; margin-top: 80px;" />
+                    <input type="text" placeholder="Фамилия" class="form-control w-100 rounded-4 mt-5" v-model="formData.last_name"
+                        style="height: 48px; font-size: inherit;" />
+                    <div v-if="errors.last_name" class="error text-danger mx-3">{{ errors.last_name }}</div>
+                    <input type="text" placeholder="Имя" class="form-control w-100 rounded-4 mt-3" v-model="formData.first_name"
+                        style="height: 48px; font-size: inherit;" />
+                    <div v-if="errors.first_name" class="error text-danger mx-3">{{ errors.first_name }}</div>
+                    <select class="form-select w-100 rounded-4 mt-3" v-model="formData.role"
+                        style="height: 48px; font-size: inherit;" :class="{'text-muted': !formData.role}">
+                        <option value="" disabled selected>Выберите роль</option>
+                        <option value="student">Студент</option>
+                        <option value="teacher">Преподаватель</option>
+                    </select>
+                    <div v-if="errors.role" class="error text-danger mx-3">{{ errors.role }}</div>
+                    <input type="text" placeholder="Логин" class="form-control w-100 rounded-4 mt-3" v-model="formData.login"
+                        style="height: 48px; font-size: inherit;" />
                     <div v-if="errors.login" class="error text-danger mx-3">{{ errors.login }}</div>
-                    <input type="password" placeholder="Пароль" class="form-control w-100 rounded-4 mt-4" v-model="formData.password"
+                    <input type="password" placeholder="Пароль" class="form-control w-100 rounded-4 mt-3" v-model="formData.password"
                         style=" height: 48px; font-size: inherit;" />
                     <div v-if="errors.password" class="error text-danger mx-3">{{ errors.password }}</div>
-                    <div class="d-flex justify-content-center mb-3" style="margin-top: 80px;">
+                    <div class="d-flex justify-content-center mb-3 mt-4">
                         <button type="submit"
                             class="btn d-flex justify-content-center text-white rounded-3"
                             style="background-color: #53B1F5; width: 295px; height: 48px; font-size: inherit;">Зарегистрироваться</button>
@@ -36,27 +49,67 @@ export default defineComponent({
         return {
             /**
              * Данные формы регистрации
+             *    last_name - фамилия пользователя
+             *    first_name - имя пользователя
+             *    role - роль пользователя
              *    login - логин пользователя
              *    password - пароль пользователя
              */
             formData: {
-                name: '' as string,
+                last_name: '' as string,
+                first_name: '' as string,
+                role: '' as string,
                 login: '' as string,
                 password: '' as string,
-                confirmPassword: '' as string
             },
             /**
              * Текст отображения ошибок под полями ввода
+             *    last_name - фамилия пользователя
+             *    first_name - имя пользователя
+             *    role - роль пользователя
              *    login - логин пользователя
              *    password - пароль пользователя
              */
             errors: {
+                last_name: '' as string,
+                first_name: '' as string,
+                role: '' as string,
                 login: '' as string,
                 password: '' as string,
             }
         }
     },
     methods: {
+        // Влидация фамилии
+        validateLastName(): boolean {
+            // При пустом значении
+            if (!this.formData.last_name) {
+                this.errors.last_name = 'Заполните поле';
+                return false;
+            }
+            this.errors.last_name = '';
+            return true;
+        },
+        // Валидация имени
+        validateFirstName(): boolean {
+            // При пустом значении
+            if (!this.formData.first_name) {
+                this.errors.first_name = 'Заполните поле';
+                return false;
+            }
+            this.errors.first_name = '';
+            return true;
+        },
+        // Валидация роли
+        validateRole(): boolean {
+            // При пустом значении
+            if (!this.formData.role) {
+                this.errors.role = 'Выберите роль';
+                return false;
+            }
+            this.errors.role = '';
+            return true;
+        },
         // Влидация логина
         validateLogin(): boolean {
             const loginPattern = /^[a-zA-Z0-9]{3,}$/;
@@ -91,12 +144,19 @@ export default defineComponent({
         // Зарегистрировать пользователя
         async registerUser() {
             let success: boolean = true;
+            // Валидация всех полей
+            if(!this.validateLastName()) success = false;
+            if(!this.validateFirstName()) success = false;
+            if(!this.validateRole()) success = false;
             if(!this.validateLogin()) success = false;
             if(!this.validatePassword()) success = false;
 
             if (!success) return;
 
             const newUser = {
+                last_name: this.formData.last_name,
+                first_name: this.formData.first_name,
+                role: this.formData.role,
                 login: this.formData.login,
                 password: this.formData.password
             };
@@ -105,6 +165,9 @@ export default defineComponent({
                 const response = await axios.post(`/api/users/register`, newUser);
                 
                 if (response.status === 201) {
+                    this.formData.last_name = '';
+                    this.formData.first_name = '';
+                    this.formData.role = '';
                     this.formData.login = '';
                     this.formData.password = '';
 
@@ -125,4 +188,6 @@ export default defineComponent({
 })
 </script>
 
-<style></style>
+<style scoped>
+.text-muted{color:#6c757d;}
+</style>
