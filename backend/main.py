@@ -34,8 +34,8 @@ class Token(BaseModel):
 class User(BaseModel):
     last_name: str
     first_name: str
-    login: str
     role: str
+    login: str
     password: str
 
 
@@ -222,7 +222,7 @@ async def delete_user(token: Annotated[str, Depends(oauth2_scheme)], session: Se
     return JSONResponse({"message": "Пользователь удален"}, status_code=200)
 
 
-# Обновить инфорацию о пользователе
+# Обновить информацию о пользователе
 @app.put("/users/me/update", summary="Обновить информацию о текущем пользователе", tags=["Пользователи"])
 async def update_user(user_data: UserUpdate, token: Annotated[str, Depends(oauth2_scheme)], session: Session = Depends(get_session)):
     """
@@ -242,7 +242,7 @@ async def update_user(user_data: UserUpdate, token: Annotated[str, Depends(oauth
     if not user:
         raise HTTPException(status_code=404, detail="Пользователь не найден")
 
-    if not user_data.login and not user_data.password:
+    if not user_data:
         raise HTTPException(status_code=400, detail="Нет данных для обновления")
     
     old_login = user.login
@@ -255,6 +255,10 @@ async def update_user(user_data: UserUpdate, token: Annotated[str, Depends(oauth
         user.login = user_data.login
     if user_data.password:
         user.password = get_password_hash(user_data.password)
+    if user_data.last_name:
+        user.last_name = user_data.last_name
+    if user_data.first_name:
+        user.first_name = user_data.first_name
 
     session.add(user)
     session.commit()
