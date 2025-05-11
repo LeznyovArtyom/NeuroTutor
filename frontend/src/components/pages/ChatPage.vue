@@ -548,7 +548,7 @@ export default defineComponent({
 })
 </script>
 
-<style>
+<style scoped>
 /* Выбор чата */
 .selected_chat {
     background-color: #D9D9D9;

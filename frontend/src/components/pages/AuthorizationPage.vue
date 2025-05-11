@@ -95,7 +95,7 @@ export default defineComponent({
                     this.formData.password = ''
 
                     this.setCookie('access_token', response.data.access_token);
-                    this.$router.push('/chat');
+                    this.$router.push('/disciplines');
                 } else {
                     throw new Error(response.data.error || 'Неизвестная ошибка');
                 }

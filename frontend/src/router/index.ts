@@ -3,6 +3,10 @@ import ChatPage from '@/components/pages/ChatPage.vue'
 import IndexPage from '@/components/pages/IndexPage.vue'
 import AuthorizationPage from '@/components/pages/AuthorizationPage.vue'
 import RegistrationPage from '@/components/pages/RegistrationPage.vue'
+import DisciplinesLayoutPage from '@/components/pages/DisciplinesLayoutPage.vue'
+import BlankArea from '@/components/ui/BlankArea.vue'
+import DisciplineCreate from '@/components/ui/DisciplineCreate.vue'
+import DisciplineDetail from '@/components/ui/DisciplineDetail.vue'
 
 const router = createRouter({
   history: createWebHistory(import.meta.env.BASE_URL),
@@ -21,6 +25,29 @@ const router = createRouter({
       path: '/registration',
       name: 'Регистрация',
       component: RegistrationPage,
+    },
+    {
+      path: '/disciplines',
+      name: 'Дисциплины',
+      component: DisciplinesLayoutPage,
+      children: [
+        {
+          path: '',
+          component: BlankArea,
+          meta: { title: 'Выберите дисциплину' }
+        },
+        {
+          path: 'new',
+          component: DisciplineCreate,
+          meta: { title: 'Создать дисциплину' }
+        },
+        {
+          path: ':id(\\d+)',
+          component: DisciplineDetail,
+          props: true,
+          meta: { title: 'Информация о дисциплине' }
+        }
+      ]
     },
     {
       path: '/chat',
