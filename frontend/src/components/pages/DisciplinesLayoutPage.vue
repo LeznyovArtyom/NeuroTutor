@@ -4,7 +4,9 @@
         <LeftPanel :showPanel="showPanel" :getCookie="getCookie" />
 
         <!-- Основная область -->
-        <MainPanel :showPanel="showPanel" @togglePanel="togglePanel" />
+        <MainPanel :showPanel="showPanel" :pageTitle="pageTitle" @togglePanel="togglePanel">
+            <router-view />
+        </MainPanel>
     </div>
 </template>
 
@@ -24,6 +26,12 @@ export default defineComponent({
             showPanel: true,
         }
     },
+    computed: {
+        // берём заголовок из meta текущего маршрута
+        pageTitle(): string {
+            return String(this.$route.meta.title ?? '')
+        }
+    },
     methods: {
         // Получить куки для name
         getCookie(name: string) {
@@ -39,6 +47,3 @@ export default defineComponent({
     }
 })
 </script>
-
-<style>
-</style>

@@ -6,10 +6,14 @@
             <button class="btn close_panel p-0" @click="$emit('togglePanel')">
                 <img src="@/assets/close_panel.svg" alt="Закрыть панель" width="43" style="cursor: pointer" />
             </button>
+
+            <div class="header_name ms-4">
+                {{ pageTitle }}
+            </div>
         </div>
         <div class="main_area px-5 d-flex flex-column flex-grow-1 chat_content mx-auto"
             style="overflow-y: auto; padding-bottom: 62px; width: 1250px;">
-
+            <slot></slot>
         </div>
     </div>
 </template>
@@ -24,6 +28,10 @@ export default defineComponent({
             type: Boolean,
             default: false
         },
+        pageTitle: { 
+            type: String, 
+            default: '' 
+        }
     },
     emit: ['togglePanel'],
     methods: {
@@ -51,6 +59,9 @@ export default defineComponent({
     padding: 0 1rem;
     box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
     transition: left 0.3s ease;
+}
+.header_name {
+    font-size: 24px;
 }
 
 .main_panel {

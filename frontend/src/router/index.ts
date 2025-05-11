@@ -33,16 +33,19 @@ const router = createRouter({
       children: [
         {
           path: '',
+          name: 'blank-area',
           component: BlankArea,
           meta: { title: 'Выберите дисциплину' }
         },
         {
           path: 'new',
+          name: 'discipline-new',
           component: DisciplineCreate,
           meta: { title: 'Создать дисциплину' }
         },
         {
           path: ':id(\\d+)',
+          name: 'discipline-detail',
           component: DisciplineDetail,
           props: true,
           meta: { title: 'Информация о дисциплине' }

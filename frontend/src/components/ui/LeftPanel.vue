@@ -6,10 +6,10 @@
                 <div class="site_name ms-2 fw-semibold">NeuroTutor</div>
             </div>
             <div class="d-flex align-items-center mt-5 justify-content-center">
-                <button class="btn add_discipline d-flex justify-content-center align-items-center text-white"
-                    @click="add_discipline">
+                <router-link class="btn add_discipline d-flex justify-content-center align-items-center text-white"
+                    :to="{ name: 'discipline-new' }">
                     <img src="@/assets/book.svg" alt="Новый чат" width="34" class="me-2" />Добавить дисциплину
-                </button>
+                </router-link>
             </div>
             <div class="disciplines_list_name mt-4 mb-2 ms-3 fw-medium">Список дисциплин</div>
             <div class="disciplines_list">
@@ -54,27 +54,15 @@ export default defineComponent({
         }
     },
     methods: {
-        // Добавление дисциплины
-        async add_discipline() {
-            try {
-                const accessToken = this.getCookie('access_token');
-
-                const response = await axios.post(`/api/users/me/disciplines/add`,
-                    {},
-                    { headers: { 'Authorization': `Bearer ${accessToken}` } }
-                );
-
-                this.get_disciplines()
-                this.selectedDisciplineId = response.data.newChatSessionId;
-
-            } catch (error) {
-                console.log(error);
-                if (axios.isAxiosError(error) && error.response?.status === 401) {
-                    this.$router.push('/');
-                } else {
-                    console.error('Произошла ошибка при добавлении чата:', error);
-                }
+        async reloadAndSelect() {
+            // 1. если мы всё ещё внутри /disciplines — обновим список
+            if (this.$route.path.startsWith('/disciplines')) {
+                await this.get_disciplines()
             }
+
+            // 2. если у маршрута есть :id — подсветим
+            const id = Number(this.$route.params.id)
+            this.selectedDisciplineId = isNaN(id) ? undefined : id
         },
         // Получить все дисциплины текущего преподавателя
         async get_disciplines() {
@@ -106,7 +94,11 @@ export default defineComponent({
         },
     },
     mounted() {
-        this.get_disciplines();
+        this.reloadAndSelect();
+    },
+    watch: {
+        // любое изменение URL внутри /disciplines
+        $route: 'reloadAndSelect'
     },
 })
 </script>
@@ -148,11 +140,13 @@ export default defineComponent({
 .slide-fade-leave-active {
     transition: all 0.3s ease;
 }
+
 .slide-fade-enter-from,
 .slide-fade-leave-to {
     transform: translateX(-100%);
     opacity: 0;
 }
+
 .slide-fade-enter-to,
 .slide-fade-leave-from {
     transform: translateX(0);

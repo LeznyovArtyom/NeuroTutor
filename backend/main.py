@@ -12,6 +12,7 @@ from models import User as UserModel, Chat as ChatModel, Message as MessageModel
 from sqlmodel import Session, select
 from datetime import datetime, timedelta, timezone
 from typing import Optional, List
+import base64
 
 
 app = FastAPI(title="API NeuroTutor", description="API для цифрового помощника", version="3.1.0")
@@ -335,7 +336,7 @@ async def add_new_discipline(discipline_data: Discipline, token: Annotated[str, 
         session.commit()
         session.refresh(new_document)
 
-    return JSONResponse({"message": "Дисциплина успешно добавлена"}, status_code=201)
+    return JSONResponse({"id": new_discipline.id, "message": "Дисциплина успешно добавлена"}, status_code=201)
 
 
 # Получить информацию о дисциплине текущего преподавателя
@@ -366,7 +367,7 @@ async def get_discipline_info(discipline_id: int, token: Annotated[str, Depends(
             {
                 "id": document.id,
                 "name": document.name,
-                "data": document.data
+                "data": base64.b64encode(document.data).decode()
             } for document in discipline.documents
         ]
     }}, status_code=200)
