@@ -1,11 +1,11 @@
 <template>
     <div class="container-fluid">
         <!-- Левая панель -->
-        <LeftPanel :showPanel="showPanel" :getCookie="getCookie" />
+        <LeftPanel ref="leftPanel" :showPanel="showPanel" :getCookie="getCookie" />
 
         <!-- Основная область -->
         <MainPanel :showPanel="showPanel" :pageTitle="pageTitle" @togglePanel="togglePanel">
-            <router-view />
+            <router-view @discipline-renamed="onDisciplineRenamed" />
         </MainPanel>
     </div>
 </template>
@@ -33,6 +33,9 @@ export default defineComponent({
         }
     },
     methods: {
+        onDisciplineRenamed({ id, name }: { id: number; name: string }) {
+            (this.$refs.leftPanel as any).updateDisciplineName(id, name)
+        },
         // Получить куки для name
         getCookie(name: string) {
             let matches = document.cookie.match(new RegExp(

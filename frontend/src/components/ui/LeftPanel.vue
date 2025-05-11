@@ -16,7 +16,7 @@
                 <div v-for="discipline in disciplines" :key="discipline.id"
                     class="discipline d-flex align-items-center px-3 rounded-2"
                     :class="{ selected_discipline: selectedDisciplineId === discipline.id }"
-                    @click="selectedDiscipline(discipline.id)">
+                    @click="selectDiscipline(discipline.id)">
                     {{ truncateString(discipline.name, 30) }}
                 </div>
             </div>
@@ -55,7 +55,7 @@ export default defineComponent({
     },
     methods: {
         async reloadAndSelect() {
-            // 1. если мы всё ещё внутри /disciplines — обновим список
+            // работаем только внутри раздела дисциплин
             if (this.$route.path.startsWith('/disciplines')) {
                 await this.get_disciplines()
             }
@@ -84,21 +84,38 @@ export default defineComponent({
                 }
             }
         },
-        async selectedDiscipline(disciplineId: number) {
-            if (this.selectedDisciplineId === disciplineId) return // повторный клик – ничего не делаем
-            this.selectedDisciplineId = disciplineId
+        // Выбрать дисциплину
+        async selectDiscipline(id: number) {
+            if (this.selectedDisciplineId === id) return // повторный клик – ничего не делаем
+            this.$router.push({ name: 'discipline-detail', params: { id } })
+        },
+        /** подсветка активной дисциплины по URL */
+        syncSelectedFromRoute() {
+            const id = Number(this.$route.params.id)
+            this.selectedDisciplineId = Number.isFinite(id) ? id : undefined
+        },
+        // Обновить название дисциплины (вызывается из DisciplineDetail.vue)
+        updateDisciplineName(id: number, name: string) {
+            const d = this.disciplines.find(d => d.id === id)
+            if (d) { d.name = name }
         },
         // Обрезка строки в соответствии с количеством символов
         truncateString(str: string, num: number): string {
             return str.length > num ? str.slice(0, num) + "..." : str;
         },
     },
-    mounted() {
-        this.reloadAndSelect();
+    async mounted() {
+        await this.get_disciplines()
+        this.syncSelectedFromRoute()
     },
     watch: {
-        // любое изменение URL внутри /disciplines
-        $route: 'reloadAndSelect'
+        /* реагируем на любое изменение маршрута */
+        $route() {
+            this.syncSelectedFromRoute()
+            if (this.$route.path.startsWith('/disciplines')) {
+                this.get_disciplines()
+            }
+        }
     },
 })
 </script>

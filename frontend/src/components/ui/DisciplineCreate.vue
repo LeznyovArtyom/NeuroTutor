@@ -36,7 +36,7 @@ export default defineComponent({
     },
     computed: {
         canSubmit(): boolean {
-            return this.title.trim().length > 0 && this.files.length > 0
+            return this.title.trim().length > 0
         }
     },
     methods: {
@@ -83,9 +83,6 @@ export default defineComponent({
                     new_discipline,
                     { headers: { 'Authorization': `Bearer ${accessToken}` } }
                 );
-
-                /* 4. успех → вернуться к списку */
-                this.$router.push('/disciplines')
 
                 const id = response.data.id
                 this.$router.push({ name: 'discipline-detail', params: { id } })

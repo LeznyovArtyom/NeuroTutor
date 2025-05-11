@@ -13,7 +13,7 @@
         </div>
         <div class="main_area px-5 d-flex flex-column flex-grow-1 chat_content mx-auto"
             style="overflow-y: auto; padding-bottom: 62px; width: 1250px;">
-            <slot></slot>
+            <slot @discipline-renamed="$emit('discipline-renamed', $event)"></slot>
         </div>
     </div>
 </template>
@@ -33,7 +33,7 @@ export default defineComponent({
             default: '' 
         }
     },
-    emit: ['togglePanel'],
+    emits: ['togglePanel', 'discipline-renamed'],
     methods: {
         truncateString(str: string, maxLength: number) {
             if (str.length > maxLength) {

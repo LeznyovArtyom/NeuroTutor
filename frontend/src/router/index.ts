@@ -47,7 +47,7 @@ const router = createRouter({
           path: ':id(\\d+)',
           name: 'discipline-detail',
           component: DisciplineDetail,
-          props: true,
+          props: route => ({ id: Number(route.params.id) }),
           meta: { title: 'Информация о дисциплине' }
         }
       ]
