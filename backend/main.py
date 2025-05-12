@@ -441,6 +441,33 @@ async def delete_discipline(discipline_id: int, token: Annotated[str, Depends(oa
     return JSONResponse({"message": "Дисциплина успешно удалена"}, status_code=200)
 
 
+# Удалить документ
+@app.delete("/disciplines/{discipline_id}/documents/{document_id}/delete", summary="Удалить документ из дисциплины", tags=["Дисциплины"])
+async def delete_document_from_discipline(discipline_id: int, document_id: int, token: Annotated[str, Depends(oauth2_scheme)], session: Session = Depends(get_session)):
+    """
+    Удаляет документ из дисциплины.
+    Требуется авторизация с использованием токена доступа.
+
+    Параметр пути: **discipline_id**, **document_id**
+    """
+    user_login = decode_access_token(token)
+
+    user = session.exec(select(UserModel).where(UserModel.login == user_login)).first()
+
+    if not user:
+        raise HTTPException(status_code=404, detail="Пользователь не найден")
+    
+    document = session.exec(select(DocumentModel).where(DisciplineModel.id == discipline_id, DocumentModel.id == document_id)).first()
+
+    if not document:
+        raise HTTPException(status_code=404, detail="Дисциплина не найдена")
+    
+    session.delete(document)
+    session.commit()
+
+    return JSONResponse({"message": "Документ успещно удален из дисциплины"}, status_code=200)
+
+
 # Получить все работы дисциплины
 
 # Добавить новую работу к дисциплине
