@@ -2,7 +2,7 @@
     <div class="title mb-2 mt-5">Назовите дисциплину</div>
     <input type="text" class="discipline_name form-control rounded-3" v-model="title">
     <div class="title mb-2 mt-5">Загрузите документы</div>
-    <input ref="fileInput" type="file" multiple class="add_documents" @change="handleFiles">
+    <input type="file" multiple class="add_documents" @change="handleFiles">
     <div class="title mb-2 mt-5">Загруженные документы</div>
     <div class="files d-flex gap-4 flex-wrap">
         <div v-for="(file, i) in files" :key="file.name + i" class="d-flex flex-column align-items-center file-item">
@@ -72,7 +72,7 @@ export default defineComponent({
                     }))
                 )
 
-                /* 2. собираем DTO один-в-один как на сервере */
+                /* 2. формируем объект с дисциплиной */
                 const new_discipline = {
                     name: this.title.trim(),
                     documents: docs
