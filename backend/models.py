@@ -121,8 +121,9 @@ class Work(SQLModel, table=True):
     id: Optional[int] = Field(primary_key=True)
     name: str = Field(max_length=255)
     task: Optional[str] = Field(sa_column=Column(Text()))
+    number: int = Field(nullable=False)
     document_id: Optional[int] = Field(sa_column=Column(ForeignKey("document.id", ondelete="SET NULL")))
-    section: Optional[str] = Field(max_length=255)
+    document_section: Optional[str] = Field(max_length=255)
     discipline_id: Optional[int] = Field(sa_column=Column(ForeignKey("discipline.id", ondelete="CASCADE")))
 
     discipline: Optional[Discipline] = Relationship(back_populates="works", sa_relationship_kwargs={"passive_deletes": True})

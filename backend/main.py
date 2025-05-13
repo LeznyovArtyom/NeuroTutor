@@ -9,7 +9,7 @@ from passlib.context import CryptContext
 import jwt
 from database import get_session
 from models import User as UserModel, Chat as ChatModel, Message as MessageModel, Discipline as DisciplineModel, Document as DocumentModel, Work as WorkModel, TeacherStudent as TeacherStudentModel, UserWork as UserWorkModel
-from sqlmodel import Session, select
+from sqlmodel import Session, select, update
 from datetime import datetime, timedelta, timezone
 from typing import Optional, List
 import base64
@@ -65,6 +65,15 @@ class Discipline(BaseModel):
 class DisciplineUpdate(BaseModel):
     name: Optional[str] = None
     documents: Optional[List[Document]] = None
+
+
+class Work(BaseModel):
+    name: str
+    task: str
+    number: int
+    document_id: int
+    document_section: str
+
 
 
 
@@ -359,6 +368,8 @@ async def get_discipline_info(discipline_id: int, token: Annotated[str, Depends(
 
     if not discipline:
         raise HTTPException(status_code=404, detail="Дисциплина не найдена")
+    
+    works = session.exec(select(WorkModel).where(DisciplineModel.id == discipline_id)).all()
 
     return JSONResponse({"Discipline": {
         "id": discipline.id,
@@ -369,6 +380,13 @@ async def get_discipline_info(discipline_id: int, token: Annotated[str, Depends(
                 "name": document.name,
                 "data": base64.b64encode(document.data).decode()
             } for document in discipline.documents
+        ],
+        "works": [
+            {
+                "id": work.id,
+                "name": work.name,
+                "number": work.number,
+            } for work in works
         ]
     }}, status_code=200)
 
@@ -448,7 +466,7 @@ async def delete_document_from_discipline(discipline_id: int, document_id: int, 
     Удаляет документ из дисциплины.
     Требуется авторизация с использованием токена доступа.
 
-    Параметр пути: **discipline_id**, **document_id**
+    Параметры пути: **discipline_id**, **document_id**
     """
     user_login = decode_access_token(token)
 
@@ -468,9 +486,57 @@ async def delete_document_from_discipline(discipline_id: int, document_id: int, 
     return JSONResponse({"message": "Документ успещно удален из дисциплины"}, status_code=200)
 
 
-# Получить все работы дисциплины
-
 # Добавить новую работу к дисциплине
+@app.post("/disciplines/{discipline_id}/work/add", summary="Добавить новую работу в дисциплину", tags=["Работы"])
+async def add_new_work_to_discipline(discipline_id: int, work_data: Work, token: Annotated[str, Depends(oauth2_scheme)], session: Session = Depends(get_session)):
+    """
+    Добавляет новую работу в дисциплину.
+    Требуется авторизация с использованием токена доступа.
+
+    Поля для добавления работы:
+    - **name**: Название работы
+    - **task**: Задание
+    - **number**: Номер работы (для сортировки в списке)
+    - **document_id**: ID документа
+    - **document_section**: Раздел документа
+
+    Параметр пути: **discipline_id**
+    """
+    user_login = decode_access_token(token)
+
+    user = session.exec(select(UserModel).where(UserModel.login == user_login)).first()
+
+    if not user:
+        raise HTTPException(status_code=404, detail="Пользователь не найден")
+    
+    # проверяем, что дисциплина существует и принадлежит текущему преподавателю
+    discipline = session.exec(select(DisciplineModel).where(DisciplineModel.id == discipline_id,DisciplineModel.teacher_id == user.id,)).first()
+    
+    if not discipline:
+        raise HTTPException(status_code=404, detail="Дисциплина не найдена")
+
+    # Сдвинуть все существующие работы с number >= запрошенного на +1
+    stmt = (update(WorkModel).where(WorkModel.discipline_id == discipline_id, WorkModel.number >= work_data.number,)
+        # использовать SQL-выражение, сдвигающее поле number на +1
+        .values(number=WorkModel.number + 1)
+        .execution_options(synchronize_session="fetch")
+    )
+    session.exec(stmt)
+
+    new_work = WorkModel(
+        name=work_data.name,
+        task=work_data.task,
+        number=work_data.number,
+        document_id=work_data.document_id,
+        document_section=work_data.document_section,
+        discipline_id=discipline_id
+    )
+
+    session.add(new_work)
+    session.commit()
+
+    return JSONResponse({"message": "Работа успешно добавлена в дисциплину"}, status_code=201)
+
 
 # Удалить работу из дисциплины
 

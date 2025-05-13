@@ -29,6 +29,32 @@
             </button>
         </div>
     </div>
+
+    <div class="d-flex justify-content-between mt-5">
+        <div class="title align-self-end">Работы</div>
+        <router-link
+            class="btn action_button add_work text-white rounded-3 d-flex align-items-center justify-content-center"
+            :to="{ name: 'work-add' }">Добавить
+        </router-link>
+    </div>
+
+    <table class="table text-nowrap table-hover border-top mt-3">
+        <thead class="text-uppercase">
+            <tr>
+                <th>Название</th>
+                <th class="text-center">Действия</th>
+            </tr>
+        </thead>
+        <tbody>
+            <tr v-for="work in works">
+                <td>{{ work.name }}</td>
+                <td class="d-flex gap-3 justify-content-center">
+                    <i class="bi bi-pencil me-1"></i>
+                    <i class="bi bi-trash me-1"></i>
+                </td>
+            </tr>
+        </tbody>
+    </table>
 </template>
 
 <script lang="ts">
@@ -52,7 +78,8 @@ export default defineComponent({
                 name: ''
             },
             isEditing: false,
-            documents: [] as Array<{ id: number; name: string, data: File }>
+            documents: [] as Array<{ id: number; name: string, data: File }>,
+            works: [] as Array<{id: number, name: string, number: number}>
         }
     },
     emits: ['discipline-renamed'],
@@ -69,6 +96,7 @@ export default defineComponent({
                 this.discipline.name = response.data.Discipline.name;
                 this.newDiscipline.name = this.discipline.name;
                 this.documents = response.data.Discipline.documents;
+                this.works = response.data.Discipline.works.sort((a: { number: number; }, b: { number: number; }) => a.number - b.number);
 
             } catch (error) {
                 console.log(error);
@@ -204,7 +232,8 @@ export default defineComponent({
 }
 
 .change_discipline_name,
-.save_change {
+.save_change,
+.add_work {
     background-color: #53B1F5;
 }
 

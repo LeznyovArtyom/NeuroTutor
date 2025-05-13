@@ -7,6 +7,7 @@ import DisciplinesLayoutPage from '@/components/pages/DisciplinesLayoutPage.vue'
 import BlankArea from '@/components/ui/BlankArea.vue'
 import DisciplineCreate from '@/components/ui/DisciplineCreate.vue'
 import DisciplineDetail from '@/components/ui/DisciplineDetail.vue'
+import AddWork from '@/components/ui/AddWork.vue'
 
 const router = createRouter({
   history: createWebHistory(import.meta.env.BASE_URL),
@@ -49,6 +50,13 @@ const router = createRouter({
           component: DisciplineDetail,
           props: route => ({ id: Number(route.params.id) }),
           meta: { title: 'Информация о дисциплине' }
+        },
+        {
+          path : ':id(\\d+)/add-work',
+          name : 'work-add',
+          component: AddWork,
+          props: route => ({ id: Number(route.params.id) }),
+          meta : { title:'Добавить новую работу' }
         }
       ]
     },
