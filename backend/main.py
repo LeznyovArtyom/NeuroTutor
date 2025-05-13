@@ -539,6 +539,31 @@ async def add_new_work_to_discipline(discipline_id: int, work_data: Work, token:
 
 
 # Удалить работу из дисциплины
+@app.delete("/disciplines/{discipline_id}/work/{work_id}/delete", summary="Удалить работу из дисциплины", tags=["Работы"])
+async def delete_work(discipline_id: int, work_id: int, token: Annotated[str, Depends(oauth2_scheme)], session: Session = Depends(get_session)):
+    """
+    Удаляет работу из дисциплины.
+    Требуется авторизация с использованием токена доступа.
+
+    Параметр пути: **discipline_id**, **work_id**
+    """
+    user_login = decode_access_token(token)
+
+    user = session.exec(select(UserModel).where(UserModel.login == user_login)).first()
+
+    if not user:
+        raise HTTPException(status_code=404, detail="Пользователь не найден")
+
+    work = session.exec(select(WorkModel).where(DisciplineModel.id == discipline_id)).first()
+
+    if not work:
+        raise HTTPException(status_code=404, detail="Работа не найдена")
+
+    session.delete(work)
+    session.commit()
+
+    return JSONResponse({"message": "Работа успешно удалена из дисциплины"}, status_code=200)
+
 
 # Получить информацию о работе
 

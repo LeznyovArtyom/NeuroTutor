@@ -49,12 +49,41 @@
             <tr v-for="work in works">
                 <td>{{ work.name }}</td>
                 <td class="d-flex gap-3 justify-content-center">
-                    <i class="bi bi-pencil me-1"></i>
-                    <i class="bi bi-trash me-1"></i>
+                    <button class="btn work_button p-0 m-0 text-center" title="Изменить работу">
+                        <i class="bi bi-pencil"></i>
+                    </button>
+                    <button class="btn work_button p-0 m-0 text-center" title="Удалить работу" data-bs-toggle="modal"
+                        data-bs-target="#deleteWorkModal" @click="prepareDelete(work)">
+                        <i class="bi bi-trash"></i>
+                    </button>
                 </td>
             </tr>
         </tbody>
     </table>
+
+    <div class="modal fade" id="deleteWorkModal" tabindex="-1" aria-labelledby="deleteWorkModalLabel"
+        aria-hidden="true">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="deleteWorkModalLabel">Удаление работы</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    Вы действительно хотите удалить работу
+                    <strong>{{ workToDelete?.name }}</strong>?
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">
+                        Отмена
+                    </button>
+                    <button type="button" class="btn btn-danger" @click="delete_work" data-bs-dismiss="modal">
+                        Удалить
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
 </template>
 
 <script lang="ts">
@@ -79,7 +108,8 @@ export default defineComponent({
             },
             isEditing: false,
             documents: [] as Array<{ id: number; name: string, data: File }>,
-            works: [] as Array<{id: number, name: string, number: number}>
+            works: [] as Array<{ id: number, name: string, number: number }>,
+            workToDelete: { id: 0, name: '' } as { id: number; name: string }
         }
     },
     emits: ['discipline-renamed'],
@@ -205,6 +235,28 @@ export default defineComponent({
                 }
             }
         },
+        // Подготовка работы для удаления
+        prepareDelete(work: { id: number; name: string }) {
+            this.workToDelete = work
+        },
+        // Удалить работу
+        async delete_work() {
+            try {
+                const token = this.getCookie('access_token')
+                await axios.delete(`/api/disciplines/${this.id}/work/${this.workToDelete.id}/delete`,
+                    { headers: { Authorization: `Bearer ${token}` } }
+                );
+
+                this.works = this.works.filter(w => w.id !== this.workToDelete.id);
+            } catch (error) {
+                console.log(error);
+                if (axios.isAxiosError(error) && error.response?.status === 401) {
+                    this.$router.push('/');
+                } else {
+                    console.error('Произошла ошибка при удалении документа:', error);
+                }
+            }
+        },
         // Получить куки для name
         getCookie(name: string) {
             let matches = document.cookie.match(new RegExp(
@@ -245,5 +297,9 @@ export default defineComponent({
     font-size: inherit;
     width: 190px;
     height: 40px;
+}
+
+.work_button {
+    font-size: inherit;
 }
 </style>
