@@ -54,16 +54,6 @@ export default defineComponent({
         }
     },
     methods: {
-        async reloadAndSelect() {
-            // работаем только внутри раздела дисциплин
-            if (this.$route.path.startsWith('/disciplines')) {
-                await this.get_disciplines()
-            }
-
-            // 2. если у маршрута есть :id — подсветим
-            const id = Number(this.$route.params.id)
-            this.selectedDisciplineId = isNaN(id) ? undefined : id
-        },
         // Получить все дисциплины текущего преподавателя
         async get_disciplines() {
             try {
