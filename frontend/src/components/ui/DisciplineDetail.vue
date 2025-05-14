@@ -49,9 +49,10 @@
             <tr v-for="work in works">
                 <td>{{ work.name }}</td>
                 <td class="d-flex gap-3 justify-content-center">
-                    <button class="btn work_button p-0 m-0 text-center" title="Изменить работу">
+                    <router-link class="btn work_button p-0 m-0 text-center" title="Изменить работу"
+                        :to="{ name: 'work-edit', params: { id: id, workId: work.id } }">
                         <i class="bi bi-pencil"></i>
-                    </button>
+                    </router-link>
                     <button class="btn work_button p-0 m-0 text-center" title="Удалить работу" data-bs-toggle="modal"
                         data-bs-target="#deleteWorkModal" @click="prepareDelete(work)">
                         <i class="bi bi-trash"></i>
@@ -253,7 +254,7 @@ export default defineComponent({
                 if (axios.isAxiosError(error) && error.response?.status === 401) {
                     this.$router.push('/');
                 } else {
-                    console.error('Произошла ошибка при удалении документа:', error);
+                    console.error('Произошла ошибка при удалении работы:', error);
                 }
             }
         },

@@ -75,6 +75,14 @@ class Work(BaseModel):
     document_section: str
 
 
+class WorkUpdate(BaseModel):
+    name: str | None = None
+    task: str | None = None
+    number: int | None = None
+    document_id: int | None = None
+    document_section: str | None = None
+
+
 
 
 
@@ -368,8 +376,6 @@ async def get_discipline_info(discipline_id: int, token: Annotated[str, Depends(
 
     if not discipline:
         raise HTTPException(status_code=404, detail="Дисциплина не найдена")
-    
-    works = session.exec(select(WorkModel).where(DisciplineModel.id == discipline_id)).all()
 
     return JSONResponse({"Discipline": {
         "id": discipline.id,
@@ -386,7 +392,7 @@ async def get_discipline_info(discipline_id: int, token: Annotated[str, Depends(
                 "id": work.id,
                 "name": work.name,
                 "number": work.number,
-            } for work in works
+            } for work in discipline.works
         ]
     }}, status_code=200)
 
@@ -554,7 +560,7 @@ async def delete_work(discipline_id: int, work_id: int, token: Annotated[str, De
     if not user:
         raise HTTPException(status_code=404, detail="Пользователь не найден")
 
-    work = session.exec(select(WorkModel).where(DisciplineModel.id == discipline_id)).first()
+    work = session.exec(select(WorkModel).where(DisciplineModel.id == discipline_id, WorkModel.id == work_id)).first()
 
     if not work:
         raise HTTPException(status_code=404, detail="Работа не найдена")
@@ -566,8 +572,119 @@ async def delete_work(discipline_id: int, work_id: int, token: Annotated[str, De
 
 
 # Получить информацию о работе
+@app.get("/disciplines/{discipline_id}/work/{work_id}", summary="Получить информацию о работе", tags=["Работы"])
+async def get_work_info(discipline_id: int, work_id: int, token: Annotated[str, Depends(oauth2_scheme)], session: Session = Depends(get_session)):
+    """
+    Получает информацию о работе.
+    Требуется авторизация с использованием токена доступа.
+
+    Параметры пути: **discipline_id**, **work_id**
+    """
+    user_login = decode_access_token(token)
+
+    user = session.exec(select(UserModel).where(UserModel.login == user_login)).first()
+
+    if not user:
+        raise HTTPException(status_code=404, detail="Пользователь не найден")
+
+    work = session.exec(select(WorkModel).where(DisciplineModel.id == discipline_id, WorkModel.id == work_id)).first()
+
+    if not work:
+        raise HTTPException(status_code=404, detail="Работа не найдена")
+
+    return JSONResponse({"Work": {
+        "id": work.id,
+        "name": work.name,
+        "task": work.task,
+        "number": work.number,
+        "document_id": work.document_id,
+        "document_section": work.document_section,
+    }}, status_code=200)
+
 
 # Обновить информацию о работе
+@app.put("/disciplines/{discipline_id}/work/{work_id}/update", summary="Обновить информацию о работе", tags=["Работы"])
+async def update_discipline(discipline_id: int, work_id: int, work_data: WorkUpdate, token: Annotated[str, Depends(oauth2_scheme)], session: Session = Depends(get_session)):
+    """
+    Обновляет информацию о работе.
+    Требуется авторизация с использованием токена доступа.
+
+    Поля для обновления работы:
+    - **name**: Название дисциплины (опционально)
+    - **task**: Задание (опционально)
+    - **number**: Порядковый номер (опционально)
+    - **document_id**: ID документа (опционально)
+    - **document_section**: Раздел документа (опционально)
+
+    Параметры пути: **discipline_id**, **work_id**
+    """
+    user_login = decode_access_token(token)
+
+    user = session.exec(select(UserModel).where(UserModel.login == user_login)).first()
+
+    if not user:
+        raise HTTPException(status_code=404, detail="Пользователь не найден")
+    
+    # Проверяем, что дисциплина принадлежит этому преподавателю
+    discipline = session.exec(select(DisciplineModel).where(DisciplineModel.id == discipline_id, DisciplineModel.teacher_id == user.id,)).first()
+    if not discipline:
+        raise HTTPException(404, "Дисциплина не найдена")
+
+    work = session.exec(select(WorkModel).where(DisciplineModel.id == discipline_id, WorkModel.id == work_id)).first()
+
+    if not work:
+        raise HTTPException(status_code=404, detail="Работа не найдена")
+
+    if work_data.name is not None:
+        work.name = work_data.name
+    if work_data.task is not None:
+        work.task = work_data.task
+    if work_data.number is not None:
+        old_num = work.number
+        new_num = work_data.number
+
+        if new_num < old_num:
+            # Сдвигаем все работы [new_num, old_num) вверх на +1
+            stmt = (
+                update(WorkModel)
+                .where(
+                    WorkModel.discipline_id == discipline_id,
+                    WorkModel.id != work_id,
+                    WorkModel.number >= new_num,
+                    WorkModel.number < old_num,
+                )
+                .values(number=WorkModel.number + 1)
+                .execution_options(synchronize_session="fetch")
+            )
+            session.exec(stmt)
+
+        elif new_num > old_num:
+            # Сдвигаем все работы (old_num, new_num] вниз на –1
+            stmt = (
+                update(WorkModel)
+                .where(
+                    WorkModel.discipline_id == discipline_id,
+                    WorkModel.id != work_id,
+                    WorkModel.number <= new_num,
+                    WorkModel.number > old_num,
+                )
+                .values(number=WorkModel.number - 1)
+                .execution_options(synchronize_session="fetch")
+            )
+            session.exec(stmt)
+
+        # Ставим новый номер текущей работы
+        work.number = new_num
+    if work_data.document_id is not None:
+        work.document_id = work_data.document_id
+    if work_data.document_section is not None:
+        work.document_section = work_data.document_section
+
+    session.add(work)
+    session.commit()
+
+    return JSONResponse({"message": "Работа успешно обновлена"}, status_code=200)
+
 
 # Добавить студента к работе
 

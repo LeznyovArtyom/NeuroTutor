@@ -8,6 +8,7 @@ import BlankArea from '@/components/ui/BlankArea.vue'
 import DisciplineCreate from '@/components/ui/DisciplineCreate.vue'
 import DisciplineDetail from '@/components/ui/DisciplineDetail.vue'
 import AddWork from '@/components/ui/AddWork.vue'
+import EditWork from '@/components/ui/EditWork.vue'
 
 const router = createRouter({
   history: createWebHistory(import.meta.env.BASE_URL),
@@ -57,6 +58,16 @@ const router = createRouter({
           component: AddWork,
           props: route => ({ id: Number(route.params.id) }),
           meta : { title:'Добавить новую работу' }
+        },
+        {
+          path : ':id(\\d+)/work/:workId(\\d+)/edit',
+          name : 'work-edit',
+          component: EditWork,
+          props: route => ({ 
+            id: Number(route.params.id),
+            workId: Number(route.params.workId),
+          }),
+          meta : { title:'Изменить информацию о работе' }
         }
       ]
     },

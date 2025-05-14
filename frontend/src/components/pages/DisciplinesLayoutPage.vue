@@ -5,7 +5,11 @@
 
         <!-- Основная область -->
         <MainPanel :showPanel="showPanel" :pageTitle="pageTitle" @togglePanel="togglePanel">
-            <router-view @discipline-renamed="onDisciplineRenamed" />
+            <router-view v-slot="{ Component, route }">
+                <component :is="Component" v-on="route.name === 'discipline-detail'
+                    ? { 'discipline-renamed': onDisciplineRenamed }
+                    : {}" />
+            </router-view>
         </MainPanel>
     </div>
 </template>
