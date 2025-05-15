@@ -15,7 +15,7 @@ from typing import Optional, List
 import base64
 
 
-app = FastAPI(title="API NeuroTutor", description="API для цифрового помощника", version="3.1.0")
+app = FastAPI(title="API NeuroTutor", description="API для цифрового помощника", version="1.0.0", docs_url="/docs", openapi_url="/openapi.json", redoc_url=None)
 
 
 app.add_middleware(
