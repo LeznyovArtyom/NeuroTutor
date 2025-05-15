@@ -170,7 +170,7 @@ export default defineComponent({
             ));
             return matches ? decodeURIComponent(matches[1]) : undefined;
         },
-        /* переключение боковой панели */
+        // Переключение боковой панели
         togglePanel() {
             this.showPanel = !this.showPanel
         },
@@ -219,7 +219,7 @@ export default defineComponent({
             }
         },
 
-        // — ПОИСК И ВЫБОР В МОДАЛКЕ —
+        // Поиск и выбор в модальном окне
         onInput() {
             if (this.query.length >= 2) {
                 this.showSuggestions = true

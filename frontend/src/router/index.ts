@@ -68,8 +68,7 @@ const router = createRouter({
           props: route => ({ 
             id: Number(route.params.id),
             workId: Number(route.params.workId),
-          }),
-          meta : { title:'Информация о работе' }
+          })
         },
         {
           path : ':id(\\d+)/work/:workId(\\d+)/edit',

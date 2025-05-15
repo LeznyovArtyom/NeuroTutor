@@ -87,6 +87,9 @@ class AddStudentsToList(BaseModel):
     ids: list[int]
 
 
+class AddStudentsToWork(BaseModel):
+    ids: list[int]
+
 
 
 
@@ -596,6 +599,13 @@ async def get_work_info(discipline_id: int, work_id: int, token: Annotated[str, 
     if not work:
         raise HTTPException(status_code=404, detail="Работа не найдена")
 
+    # Получаем студентов и их статус через таблицу user_work
+    students = session.exec(
+        select(UserModel, UserWorkModel.status)
+        .join(UserWorkModel, UserWorkModel.student_id == UserModel.id)
+        .where(UserWorkModel.work_id == work_id)
+    ).all()
+
     return JSONResponse({"Work": {
         "id": work.id,
         "name": work.name,
@@ -604,6 +614,14 @@ async def get_work_info(discipline_id: int, work_id: int, token: Annotated[str, 
         "document_id": work.document_id,
         "document_name": work.document.name,
         "document_section": work.document_section,
+        "students": [
+            {
+                "id": student.id,
+                "last_name": student.last_name,
+                "first_name": student.first_name,
+                "status": status
+            } for student, status in students
+        ]
     }}, status_code=200)
 
 
@@ -689,6 +707,96 @@ async def update_discipline(discipline_id: int, work_id: int, work_data: WorkUpd
     session.commit()
 
     return JSONResponse({"message": "Работа успешно обновлена"}, status_code=200)
+
+
+# Добавить студентов в работу
+@app.post("/disciplines/{discipline_id}/work/{work_id}/students/add", summary="Добавить студентов в работу", tags=["Работы"])
+async def add_students_to_work(discipline_id: int, work_id: int, studentsIds: AddStudentsToWork, token: Annotated[str, Depends(oauth2_scheme)], session: Session = Depends(get_session)):
+    """
+    Добавляет студентов в работу.
+    Требуется авторизация с использованием токена доступа.
+
+    Поля для обновления работы:
+    - **studentsIds**: Список ID студентов
+
+    Параметры пути:
+    - **discipline_id**: ID дисциплины
+    - **work_id**: ID работы
+    """
+    user_login = decode_access_token(token)
+
+    # Проверяем, что пользователь существует
+    user = session.exec(select(UserModel).where(UserModel.login == user_login)).first()
+    if not user:
+        raise HTTPException(status_code=404, detail="Пользователь не найден")
+
+    # Проверяем, что дисциплина принадлежит текущему преподавателю
+    discipline = session.exec(select(DisciplineModel).where(DisciplineModel.id == discipline_id, DisciplineModel.teacher_id == user.id)).first()
+    if not discipline:
+        raise HTTPException(status_code=404, detail="Дисциплина не найдена")
+
+    # Проверяем, что работа существует и принадлежит дисциплине
+    work = session.exec(select(WorkModel).where(WorkModel.id == work_id, WorkModel.discipline_id == discipline_id)).first()
+    if not work:
+        raise HTTPException(status_code=404, detail="Работа не найдена")
+
+    # Добавляем студентов в работу
+    for student_id in studentsIds.ids:
+        # Проверяем, что студент существует
+        student = session.exec(select(UserModel).where(UserModel.id == student_id)).first()
+        if not student:
+            raise HTTPException(status_code=404, detail=f"Студент с ID {student_id} не найден")
+
+        # Проверяем, что связь студент-работа еще не существует
+        existing_relation = session.exec(select(UserWorkModel).where(UserWorkModel.student_id == student_id, UserWorkModel.work_id == work_id)).first()
+        if not existing_relation:
+            new_user_work = UserWorkModel(student_id=student_id, work_id=work_id)
+            session.add(new_user_work)
+
+    session.commit()
+
+    return JSONResponse({"message": "Студенты успешно добавлены в работу"}, status_code=201)
+
+
+# Удалить студента из работы
+@app.delete("/disciplines/{discipline_id}/work/{work_id}/students/{student_id}/remove", summary="Удалить студента из работы", tags=["Работы"])
+async def remove_student_from_work(discipline_id: int, work_id: int, student_id: int, token: Annotated[str, Depends(oauth2_scheme)], session: Session = Depends(get_session)):
+    """
+    Удаляет студента из работы.
+    Требуется авторизация с использованием токена доступа.
+
+    Параметры пути:
+    - **discipline_id**: ID дисциплины
+    - **work_id**: ID работы
+    - **student_id**: ID студента
+    """
+    user_login = decode_access_token(token)
+
+    # Проверяем, что пользователь существует
+    user = session.exec(select(UserModel).where(UserModel.login == user_login)).first()
+    if not user:
+        raise HTTPException(status_code=404, detail="Пользователь не найден")
+
+    # Проверяем, что дисциплина принадлежит текущему преподавателю
+    discipline = session.exec(select(DisciplineModel).where(DisciplineModel.id == discipline_id, DisciplineModel.teacher_id == user.id)).first()
+    if not discipline:
+        raise HTTPException(status_code=404, detail="Дисциплина не найдена")
+
+    # Проверяем, что работа существует и принадлежит дисциплине
+    work = session.exec(select(WorkModel).where(WorkModel.id == work_id, WorkModel.discipline_id == discipline_id)).first()
+    if not work:
+        raise HTTPException(status_code=404, detail="Работа не найдена")
+
+    # Проверяем, что связь студент-работа существует
+    user_work = session.exec(select(UserWorkModel).where(UserWorkModel.student_id == student_id, UserWorkModel.work_id == work_id)).first()
+    if not user_work:
+        raise HTTPException(status_code=404, detail="Студент не найден в этой работе")
+
+    # Удаляем связь студент-работа
+    session.delete(user_work)
+    session.commit()
+
+    return JSONResponse({"message": "Студент успешно удален из работы"}, status_code=200)
 
 
 # Получить список студентов по совпадению
