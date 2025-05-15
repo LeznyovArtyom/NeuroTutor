@@ -9,6 +9,8 @@ import DisciplineCreate from '@/components/ui/DisciplineCreate.vue'
 import DisciplineDetail from '@/components/ui/DisciplineDetail.vue'
 import AddWork from '@/components/ui/AddWork.vue'
 import EditWork from '@/components/ui/EditWork.vue'
+import WorkDetail from '@/components/ui/WorkDetail.vue'
+import StudentsPage from '@/components/pages/StudentsPage.vue'
 
 const router = createRouter({
   history: createWebHistory(import.meta.env.BASE_URL),
@@ -60,6 +62,16 @@ const router = createRouter({
           meta : { title:'Добавить новую работу' }
         },
         {
+          path : ':id(\\d+)/work/:workId(\\d+)',
+          name : 'work-detail',
+          component: WorkDetail,
+          props: route => ({ 
+            id: Number(route.params.id),
+            workId: Number(route.params.workId),
+          }),
+          meta : { title:'Информация о работе' }
+        },
+        {
           path : ':id(\\d+)/work/:workId(\\d+)/edit',
           name : 'work-edit',
           component: EditWork,
@@ -70,6 +82,12 @@ const router = createRouter({
           meta : { title:'Изменить информацию о работе' }
         }
       ]
+    },
+    {
+      path: '/students',
+      name: 'students',
+      component: StudentsPage,
+      meta: { title: 'Список студентов' }
     },
     {
       path: '/chat',

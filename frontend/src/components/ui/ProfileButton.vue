@@ -1,5 +1,5 @@
 <template>
-    <div class=" profile_button_container d-flex justify-content-center mt-auto mb-4 position-relative">
+    <div class="profile_button_container position-relative">
         <button class="btn profile_button text-white d-flex align-items-center justify-content-center rounded-3"
             @click="toggleProfilePopup">
             Профиль

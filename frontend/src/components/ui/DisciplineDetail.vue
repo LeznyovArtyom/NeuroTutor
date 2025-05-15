@@ -47,7 +47,11 @@
         </thead>
         <tbody>
             <tr v-for="work in works">
-                <td>{{ work.name }}</td>
+                <td>
+                    <router-link class="work-title text-decoration-none"
+                        :to="{ name: 'work-detail', params: { id: id, workId: work.id } }">{{ work.name }}
+                    </router-link>
+                </td>
                 <td class="d-flex gap-3 justify-content-center">
                     <router-link class="btn work_button p-0 m-0 text-center" title="Изменить работу"
                         :to="{ name: 'work-edit', params: { id: id, workId: work.id } }">
@@ -302,5 +306,14 @@ export default defineComponent({
 
 .work_button {
     font-size: inherit;
+}
+
+.work-title {
+    color: inherit;
+}
+
+.work-title:hover {
+    color: #0d6efd;
+    text-decoration: underline;
 }
 </style>

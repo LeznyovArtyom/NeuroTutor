@@ -21,8 +21,13 @@
                 </div>
             </div>
 
-            <!-- Кнопка профиля со всплывающей информацией о пользователе -->
-            <ProfileButton :getCookie="getCookie" />
+            <div class="d-flex flex-column align-items-center mt-auto mb-4 gap-2">
+                <router-link
+                    class="btn students_button text-white d-flex align-items-center justify-content-center rounded-3"
+                    :to="{ name: 'students' }">Студенты</router-link>
+                <!-- Кнопка профиля со всплывающей информацией о пользователе -->
+                <ProfileButton :getCookie="getCookie" />
+            </div>
         </div>
     </transition>
 </template>
@@ -158,5 +163,12 @@ export default defineComponent({
 .slide-fade-leave-from {
     transform: translateX(0);
     opacity: 1;
+}
+
+.students_button {
+    background-color: #53B1F5;
+    width: 247px;
+    height: 42px;
+    font-size: inherit;
 }
 </style>
