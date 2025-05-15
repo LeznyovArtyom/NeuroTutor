@@ -1,7 +1,7 @@
 <template>
     <div class="container-fluid">
         <!-- Левая панель -->
-        <LeftPanel ref="leftPanel" :showPanel="showPanel" :getCookie="getCookie" />
+        <LeftPanel ref="leftPanel" :showPanel="showPanel" />
 
         <!-- Основная область -->
         <MainPanel :showPanel="showPanel" :pageTitle="pageTitle" @togglePanel="togglePanel">
@@ -125,6 +125,7 @@
 import { defineComponent } from 'vue'
 import axios from 'axios'
 import debounce from 'lodash.debounce'
+import Cookies from 'js-cookie';
 import LeftPanel from '@/components/ui/LeftPanel.vue';
 import MainPanel from '@/components/ui/MainPanel.vue';
 
@@ -163,13 +164,6 @@ export default defineComponent({
         }
     },
     methods: {
-        // Получить куки для name
-        getCookie(name: string) {
-            let matches = document.cookie.match(new RegExp(
-                "(?:^|; )" + name.replace(/([\.$?*|{}\(\)\[\]\\\/\+^])/g, '\\$1') + "=([^;]*)"
-            ));
-            return matches ? decodeURIComponent(matches[1]) : undefined;
-        },
         // Переключение боковой панели
         togglePanel() {
             this.showPanel = !this.showPanel
@@ -177,7 +171,7 @@ export default defineComponent({
         // Получить всех студентов преподавателя
         async fetchStudents() {
             try {
-                const accessToken = this.getCookie('access_token');
+                const accessToken = Cookies.get('access_token');
 
                 const response = await axios.get('/api/users/me/students',
                     { headers: { Authorization: `Bearer ${accessToken}` } }
@@ -201,7 +195,7 @@ export default defineComponent({
         // Удалить студента из списка
         async removeStudent() {
             try {
-                const accessToken = this.getCookie('access_token')
+                const accessToken = Cookies.get('access_token')
 
                 await axios.delete(`/api/users/me/student/${this.studentToRemove.id}/remove`,
                     { headers: { Authorization: `Bearer ${accessToken}` } }
@@ -233,7 +227,7 @@ export default defineComponent({
         // Получить студентов в поиске для добавления в список преподавателя
         debouncedFetch: debounce(async function (this: any) {
             try {
-                const token = this.getCookie('access_token')
+                const token = Cookies.get('access_token')
 
                 const response = await axios.get(
                     `/api/users/search?query=${encodeURIComponent(this.query)}`,
@@ -271,7 +265,7 @@ export default defineComponent({
             if (!this.selectedUsers.length) return
 
             try {
-                const access_token = this.getCookie('access_token')
+                const access_token = Cookies.get('access_token')
 
                 await axios.post('/api/users/me/students/add',
                     { ids: this.selectedUsers.map(u => u.id) },

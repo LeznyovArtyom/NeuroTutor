@@ -37,6 +37,7 @@
 <script lang="ts">
 import { defineComponent } from 'vue';
 import axios from 'axios';
+import Cookies from 'js-cookie';
 
 export default defineComponent({
     name: "EditWork",
@@ -78,7 +79,7 @@ export default defineComponent({
     methods: {
         async get_work_info() {
             try {
-                const accessToken = this.getCookie('access_token');
+                const accessToken = Cookies.get('access_token');
 
                 const response = await axios.get(`/api/disciplines/${this.id}/work/${this.workId}`,
                     { headers: { 'Authorization': `Bearer ${accessToken}` } }
@@ -104,7 +105,7 @@ export default defineComponent({
         // Получить информацию о дисциплине
         async get_discipline_info() {
             try {
-                const accessToken = this.getCookie('access_token');
+                const accessToken = Cookies.get('access_token');
 
                 const response = await axios.get(`/api/users/me/disciplines/${this.id}`,
                     { headers: { 'Authorization': `Bearer ${accessToken}` } }
@@ -124,7 +125,7 @@ export default defineComponent({
         },
         async edit_work() {
             try {
-                const accessToken = this.getCookie('access_token');
+                const accessToken = Cookies.get('access_token');
 
                 const updatedFields: { name?: string, task?: string, number?: number, document_id?: number, document_section?: string } = {};
                 if (this.originalWork.name !== this.work.name) {
@@ -162,14 +163,7 @@ export default defineComponent({
                     console.error('Произошла ошибка при изменении информации о работе:', error);
                 }
             }
-        },
-        // Получить куки для name
-        getCookie(name: string) {
-            let matches = document.cookie.match(new RegExp(
-                "(?:^|; )" + name.replace(/([\.$?*|{}\(\)\[\]\\\/\+^])/g, '\\$1') + "=([^;]*)"
-            ));
-            return matches ? decodeURIComponent(matches[1]) : undefined;
-        },
+        }
     },
     mounted() {
         this.get_work_info();

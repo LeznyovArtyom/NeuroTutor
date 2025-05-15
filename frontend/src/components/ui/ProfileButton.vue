@@ -26,25 +26,20 @@
     </div>
     <!-- Модальное окно изменения информации о пользователе -->
     <teleport to="body">
-        <ChangeUserInfoModal :user="user" :getCookie="getCookie" />
-    </teleport> 
+        <ChangeUserInfoModal :user="user" />
+    </teleport>
 </template>
 
 <script lang="ts">
 import { defineComponent } from 'vue';
 import axios from 'axios';
+import Cookies from 'js-cookie';
 import ChangeUserInfoModal from '@/components/ui/ChangeUserInfoModal.vue';
 
 export default defineComponent({
     name: 'ProfileButton',
     components: {
         ChangeUserInfoModal
-    },
-    props: {
-        getCookie: {
-            type: Function,
-            required: true
-        }
     },
     data() {
         return {
@@ -61,13 +56,11 @@ export default defineComponent({
         // Получить информацию о пользователе
         async getUserInfo() {
             try {
-                const accessToken = this.getCookie('access_token');
+                const accessToken = Cookies.get('access_token');
 
-                const response = await axios.get(`/api/users/me`, {
-                    headers: {
-                        'Authorization': `Bearer ${accessToken}`
-                    }
-                });
+                const response = await axios.get(`/api/users/me`,
+                    { headers: { 'Authorization': `Bearer ${accessToken}` } }
+                );
 
                 this.user.last_name = response.data.User.last_name;
                 this.user.first_name = response.data.User.first_name;
@@ -83,12 +76,8 @@ export default defineComponent({
         },
         // Выйти из аккаунта
         logout() {
-            this.deleteCookie('access_token');
+            Cookies.remove('access_token', { path: '/' });
             this.$router.push('/');
-        },
-        // Удалить куки
-        deleteCookie(name: string): void {
-            document.cookie = name + '=; Max-Age=-99999999; path=/';
         },
         /* показ / скрытие поп-апа */
         toggleProfilePopup() {
@@ -115,9 +104,9 @@ export default defineComponent({
 
 <style scoped>
 .profile_button {
-    background-color:#8eb3ce; 
-    width:247px; 
-    height:42px;
+    background-color: #8eb3ce;
+    width: 247px;
+    height: 42px;
     font-size: inherit;
 }
 
@@ -141,6 +130,7 @@ export default defineComponent({
 .fade-leave-active {
     transition: opacity .15s ease, transform .15s ease;
 }
+
 .fade-enter-from,
 .fade-leave-to {
     opacity: 0;

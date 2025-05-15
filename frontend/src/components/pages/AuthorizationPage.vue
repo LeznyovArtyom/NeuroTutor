@@ -28,6 +28,7 @@
 <script lang="ts">
 import { defineComponent } from 'vue'
 import axios from 'axios';
+import Cookies from 'js-cookie';
 
 export default defineComponent({
     name: 'AuthorizationPage',
@@ -94,7 +95,7 @@ export default defineComponent({
                     this.formData.login = '';
                     this.formData.password = ''
 
-                    this.setCookie('access_token', response.data.access_token);
+                    Cookies.set('access_token', response.data.access_token, { path: '/' });
                     this.$router.push('/disciplines');
                 } else {
                     throw new Error(response.data.error || 'Неизвестная ошибка');
@@ -107,29 +108,6 @@ export default defineComponent({
                     alert('Произошла ошибка при регистрации. Попробуйте еще раз.');
                 }
             }
-        },
-        // Установаить куки для name
-        setCookie(name: string, value: string, options: { [key: string]: string | boolean | Date } = {}): void {
-            options = {
-                path: '/',
-                ...options
-            };
-
-            if (options.expires instanceof Date) {
-                options.expires = options.expires.toUTCString();
-            }
-
-            let updatedCookie = encodeURIComponent(name) + "=" + encodeURIComponent(value);
-
-            for (let optionKey in options) {
-                updatedCookie += "; " + optionKey;
-                let optionValue = options[optionKey];
-                if (optionValue !== true) {
-                    updatedCookie += "=" + optionValue;
-                }
-            }
-
-            document.cookie = updatedCookie;
         }
     }
 })

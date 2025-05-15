@@ -48,16 +48,13 @@
 <script lang="ts">
 import { defineComponent } from 'vue'
 import axios from 'axios'
+import Cookies from 'js-cookie';
 
 export default defineComponent({
     name: 'ChangeUserInfoModal',
     props: {
         user: {
             type: Object,
-            required: true
-        },
-        getCookie: {
-            type: Function,
             required: true
         }
     },
@@ -119,14 +116,14 @@ export default defineComponent({
         // Обновить данные пользователя
         async updateUser(updatedFields: { last_name?: string; first_name?: string; login?: string; password?: string }) {
             try {
-                const accessToken = this.getCookie('access_token');
+                const accessToken = Cookies.get('access_token');
 
                 const response = await axios.put(`/api/users/me/update`,
                     updatedFields,
                     { headers: { 'Authorization': `Bearer ${accessToken}` } }
                 );
                 if (response.data.new_token) {
-                    this.setCookie('access_token', response.data.new_token);
+                    Cookies.set('access_token', response.data.new_token, { path: '/' });
                 }
                 alert('Данные успешно обновлены');
                 this.$router.go(0);
@@ -138,29 +135,6 @@ export default defineComponent({
                     console.error('Произошла ошибка при обновлении данных пользователя:', error);
                 }
             }
-        },
-        // Установить куки для name
-        setCookie(name: string, value: string, options: { [key: string]: string | boolean | Date } = {}): void {
-            options = {
-                path: '/',
-                ...options
-            };
-
-            if (options.expires instanceof Date) {
-                options.expires = options.expires.toUTCString();
-            }
-
-            let updatedCookie = encodeURIComponent(name) + "=" + encodeURIComponent(value);
-
-            for (let optionKey in options) {
-                updatedCookie += "; " + optionKey;
-                let optionValue = options[optionKey];
-                if (optionValue !== true) {
-                    updatedCookie += "=" + optionValue;
-                }
-            }
-
-            document.cookie = updatedCookie;
         }
     }
 })

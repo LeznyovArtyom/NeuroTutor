@@ -131,6 +131,7 @@
 import { defineComponent } from 'vue';
 import axios from 'axios';
 import debounce from 'lodash.debounce'
+import Cookies from 'js-cookie';
 
 interface User {
     id: number
@@ -184,7 +185,7 @@ export default defineComponent({
         // Получить информацию о работе
         async get_work_info() {
             try {
-                const accessToken = this.getCookie('access_token');
+                const accessToken = Cookies.get('access_token');
 
                 const response = await axios.get(`/api/disciplines/${this.id}/work/${this.workId}`,
                     { headers: { 'Authorization': `Bearer ${accessToken}` } }
@@ -213,7 +214,7 @@ export default defineComponent({
         // Получить студентов преподавателя
         async fetch_teacher_students() {
             try {
-                const access_token = this.getCookie('access_token');
+                const access_token = Cookies.get('access_token');
 
                 const response = await axios.get('/api/users/me/students',
                     { headers: { Authorization: `Bearer ${access_token}` } }
@@ -265,7 +266,7 @@ export default defineComponent({
                 // Если выбранных студентов нет - не добавляем
                 if (!this.selectedUsers.length) return
 
-                const access_token = this.getCookie('access_token')
+                const access_token = Cookies.get('access_token')
 
                 await axios.post(`/api/disciplines/${this.id}/work/${this.workId}/students/add`,
                     { ids: this.selectedUsers.map(u => u.id) },
@@ -292,7 +293,7 @@ export default defineComponent({
         // Удалить студента из списка
         async removeStudentFromWork() {
             try {
-                const accessToken = this.getCookie('access_token')
+                const accessToken = Cookies.get('access_token')
 
                 await axios.delete(`/api/disciplines/${this.id}/work/${this.workId}/students/${this.studentToRemove.id}/remove`,
                     { headers: { Authorization: `Bearer ${accessToken}` } }
@@ -308,14 +309,7 @@ export default defineComponent({
                     console.error('Произошла ошибка при удалении студента из работы:', error);
                 }
             }
-        },
-        // Получить куки для name
-        getCookie(name: string) {
-            let matches = document.cookie.match(new RegExp(
-                "(?:^|; )" + name.replace(/([\.$?*|{}\(\)\[\]\\\/\+^])/g, '\\$1') + "=([^;]*)"
-            ));
-            return matches ? decodeURIComponent(matches[1]) : undefined;
-        },
+        }
     },
     async mounted() {
         await Promise.all([

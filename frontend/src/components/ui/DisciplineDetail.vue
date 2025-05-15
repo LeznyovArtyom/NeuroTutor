@@ -94,6 +94,7 @@
 <script lang="ts">
 import { defineComponent } from 'vue'
 import axios from 'axios';
+import Cookies from 'js-cookie';
 
 export default defineComponent({
     name: 'DisciplineDetail',
@@ -122,7 +123,7 @@ export default defineComponent({
         // Получить информацию о дисциплине
         async get_discipline_info() {
             try {
-                const accessToken = this.getCookie('access_token');
+                const accessToken = Cookies.get('access_token');
 
                 const response = await axios.get(`/api/users/me/disciplines/${this.id}`,
                     { headers: { 'Authorization': `Bearer ${accessToken}` } }
@@ -158,7 +159,7 @@ export default defineComponent({
             }
 
             try {
-                const accessToken = this.getCookie('access_token');
+                const accessToken = Cookies.get('access_token');
                 await axios.put(`/api/users/me/disciplines/${this.id}/update`,
                     { name: newName },
                     { headers: { Authorization: `Bearer ${accessToken}` } }
@@ -202,7 +203,7 @@ export default defineComponent({
             input.value = '';
 
             try {
-                const accessToken = this.getCookie('access_token')
+                const accessToken = Cookies.get('access_token')
                 await axios.put(
                     `/api/users/me/disciplines/${this.id}/update`,
                     { documents: docs },
@@ -225,7 +226,7 @@ export default defineComponent({
             if (!confirm(`Удалить документ "${document.name}"?`)) return
 
             try {
-                const token = this.getCookie('access_token')
+                const token = Cookies.get('access_token')
                 await axios.delete(`/api/disciplines/${this.id}/documents/${document.id}/delete`,
                     { headers: { Authorization: `Bearer ${token}` } }
                 );
@@ -247,7 +248,7 @@ export default defineComponent({
         // Удалить работу
         async delete_work() {
             try {
-                const token = this.getCookie('access_token')
+                const token = Cookies.get('access_token')
                 await axios.delete(`/api/disciplines/${this.id}/work/${this.workToDelete.id}/delete`,
                     { headers: { Authorization: `Bearer ${token}` } }
                 );
@@ -261,14 +262,7 @@ export default defineComponent({
                     console.error('Произошла ошибка при удалении работы:', error);
                 }
             }
-        },
-        // Получить куки для name
-        getCookie(name: string) {
-            let matches = document.cookie.match(new RegExp(
-                "(?:^|; )" + name.replace(/([\.$?*|{}\(\)\[\]\\\/\+^])/g, '\\$1') + "=([^;]*)"
-            ));
-            return matches ? decodeURIComponent(matches[1]) : undefined;
-        },
+        }
     },
     created() {
         /* первая загрузка при открытии */

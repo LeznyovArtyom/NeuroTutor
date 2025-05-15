@@ -1,7 +1,7 @@
 <template>
     <div class="container-fluid">
         <!-- Левая панель -->
-        <LeftPanel ref="leftPanel" :showPanel="showPanel" :getCookie="getCookie" />
+        <LeftPanel ref="leftPanel" :showPanel="showPanel" />
 
         <!-- Основная область -->
         <MainPanel :showPanel="showPanel" :pageTitle="pageTitle" @togglePanel="togglePanel">
@@ -52,13 +52,6 @@ export default defineComponent({
         },
         setPageTitle(newTitle: string) {
             this.pageTitleOverride = newTitle
-        },
-        // Получить куки для name
-        getCookie(name: string) {
-            let matches = document.cookie.match(new RegExp(
-                "(?:^|; )" + name.replace(/([\.$?*|{}\(\)\[\]\\\/\+^])/g, '\\$1') + "=([^;]*)"
-            ));
-            return matches ? decodeURIComponent(matches[1]) : undefined;
         },
         /* переключение боковой панели */
         togglePanel() {

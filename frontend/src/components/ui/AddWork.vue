@@ -35,6 +35,7 @@
 <script lang="ts">
 import { defineComponent } from 'vue';
 import axios from 'axios';
+import Cookies from 'js-cookie';
 
 export default defineComponent({
     name: "AddWork",
@@ -66,7 +67,7 @@ export default defineComponent({
             if (!this.canSubmit) return
 
             try {
-                const accessToken = this.getCookie('access_token');
+                const accessToken = Cookies.get('access_token');
 
                 const new_work = {
                     name: this.work.name,
@@ -95,7 +96,7 @@ export default defineComponent({
         // Получить информацию о дисциплине
         async get_discipline_info() {
             try {
-                const accessToken = this.getCookie('access_token');
+                const accessToken = Cookies.get('access_token');
 
                 const response = await axios.get(`/api/users/me/disciplines/${this.id}`,
                     { headers: { 'Authorization': `Bearer ${accessToken}` } }
@@ -112,13 +113,6 @@ export default defineComponent({
                     console.error('Произошла ошибка при получении дисциплины:', error);
                 }
             }
-        },
-        // Получить куки для name
-        getCookie(name: string) {
-            let matches = document.cookie.match(new RegExp(
-                "(?:^|; )" + name.replace(/([\.$?*|{}\(\)\[\]\\\/\+^])/g, '\\$1') + "=([^;]*)"
-            ));
-            return matches ? decodeURIComponent(matches[1]) : undefined;
         },
     },
     mounted() {

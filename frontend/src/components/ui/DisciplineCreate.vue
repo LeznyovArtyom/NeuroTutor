@@ -25,6 +25,7 @@
 <script lang="ts">
 import { defineComponent } from 'vue';
 import axios from 'axios';
+import Cookies from 'js-cookie';
 
 export default defineComponent({
     name: 'DisciplineCreate',
@@ -57,7 +58,7 @@ export default defineComponent({
             if (!this.canSubmit) return
 
             try {
-                const accessToken = this.getCookie('access_token');
+                const accessToken = Cookies.get('access_token');
 
                 /* 1. конвертируем каждый File в base64, т.к. FastAPI ждёт bytes */
                 const docs = await Promise.all(
@@ -95,14 +96,7 @@ export default defineComponent({
                     console.error('Произошла ошибка при добавлении дисциплины:', error);
                 }
             }
-        },
-        // Получить куки для name
-        getCookie(name: string) {
-            let matches = document.cookie.match(new RegExp(
-                "(?:^|; )" + name.replace(/([\.$?*|{}\(\)\[\]\\\/\+^])/g, '\\$1') + "=([^;]*)"
-            ));
-            return matches ? decodeURIComponent(matches[1]) : undefined;
-        },
+        }
     }
 })
 </script>

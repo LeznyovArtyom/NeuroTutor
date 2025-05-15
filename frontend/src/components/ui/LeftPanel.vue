@@ -26,7 +26,7 @@
                     class="btn students_button text-white d-flex align-items-center justify-content-center rounded-3"
                     :to="{ name: 'students' }">Студенты</router-link>
                 <!-- Кнопка профиля со всплывающей информацией о пользователе -->
-                <ProfileButton :getCookie="getCookie" />
+                <ProfileButton />
             </div>
         </div>
     </transition>
@@ -36,6 +36,7 @@
 import { defineComponent } from 'vue'
 import axios from 'axios';
 import ProfileButton from '@/components/ui/ProfileButton.vue';
+import Cookies from 'js-cookie';
 
 export default defineComponent({
     name: 'LeftPanel',
@@ -46,10 +47,6 @@ export default defineComponent({
         showPanel: {
             type: Boolean,
             default: false
-        },
-        getCookie: {
-            type: Function,
-            required: true
         }
     },
     data() {
@@ -62,7 +59,7 @@ export default defineComponent({
         // Получить все дисциплины текущего преподавателя
         async get_disciplines() {
             try {
-                const accessToken = this.getCookie('access_token');
+                const accessToken = Cookies.get('access_token');
 
                 const response = await axios.get(`/api/users/me/disciplines`,
                     { headers: { 'Authorization': `Bearer ${accessToken}` } }

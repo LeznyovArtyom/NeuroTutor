@@ -106,7 +106,8 @@
                                 <div class="ai_text" v-html="convertMarkdown(message.context)"></div>
                             </div>
                         </div>
-                        <div class="write_message d-flex align-items-center border-0 p-3 rounded-5" :class="{ 'panel-open': showPanel }">
+                        <div class="write_message d-flex align-items-center border-0 p-3 rounded-5"
+                            :class="{ 'panel-open': showPanel }">
                             <input type="text" placeholder="Чем могу быть вам полезен?" v-model="inputText"
                                 @keydown.enter="sendMessage"
                                 class="w-100 border-0 bg-transparent form-control shadow-none" />
@@ -159,6 +160,7 @@
 import { defineComponent } from 'vue'
 import { marked } from 'marked'
 import axios from 'axios'
+import Cookies from 'js-cookie';
 
 export default defineComponent({
     name: 'ChatPage',
@@ -194,13 +196,11 @@ export default defineComponent({
         // Получить информацию о пользователе
         async getUserInfo() {
             try {
-                const accessToken = this.getCookie('access_token');
+                const accessToken = Cookies.get('access_token');
 
-                const response = await axios.get(`/api/users/me`, {
-                    headers: {
-                        'Authorization': `Bearer ${accessToken}`
-                    }
-                });
+                const response = await axios.get(`/api/users/me`,
+                    { headers: { 'Authorization': `Bearer ${accessToken}` } }
+                );
 
                 this.user.login = response.data.User.login;
             } catch (error) {
@@ -246,14 +246,14 @@ export default defineComponent({
         // Обновить данные пользователя
         async updateUser(updatedFields: { login?: string; password?: string }) {
             try {
-                const accessToken = this.getCookie('access_token');
+                const accessToken = Cookies.get('access_token');
 
                 const response = await axios.put(`/api/users/me/update`,
                     updatedFields,
                     { headers: { 'Authorization': `Bearer ${accessToken}` } }
                 );
                 if (response.data.new_token) {
-                    this.setCookie('access_token', response.data.new_token);
+                    Cookies.set('access_token', response.data.new_token, { path: '/' });
                 }
                 alert('Данные успешно обновлены');
                 this.$router.go(0);
@@ -266,50 +266,15 @@ export default defineComponent({
                 }
             }
         },
-        // Установить куки для name
-        setCookie(name: string, value: string, options: { [key: string]: string | boolean | Date } = {}): void {
-            options = {
-                path: '/',
-                ...options
-            };
-
-            if (options.expires instanceof Date) {
-                options.expires = options.expires.toUTCString();
-            }
-
-            let updatedCookie = encodeURIComponent(name) + "=" + encodeURIComponent(value);
-
-            for (let optionKey in options) {
-                updatedCookie += "; " + optionKey;
-                let optionValue = options[optionKey];
-                if (optionValue !== true) {
-                    updatedCookie += "=" + optionValue;
-                }
-            }
-
-            document.cookie = updatedCookie;
-        },
-        // Получить куки для name
-        getCookie(name: string) {
-            let matches = document.cookie.match(new RegExp(
-                "(?:^|; )" + name.replace(/([\.$?*|{}\(\)\[\]\\\/\+^])/g, '\\$1') + "=([^;]*)"
-            ));
-            return matches ? decodeURIComponent(matches[1]) : undefined;
-        },
         // Выйти из аккаунта
         logout() {
-            this.deleteCookie('access_token');
+            Cookies.remove('access_token', { path: '/' });
             this.$router.push('/');
         },
-        // Удалить куки
-        deleteCookie(name: string): void {
-            document.cookie = name + '=; Max-Age=-99999999; path=/';
-        },
-
         // Получить все чаты пользователя
         async get_chats() {
             try {
-                const accessToken = this.getCookie('access_token');
+                const accessToken = Cookies.get('access_token');
 
                 const response = await axios.get(`/api/users/me/chat_sessions`,
                     { headers: { 'Authorization': `Bearer ${accessToken}` } }
@@ -341,7 +306,7 @@ export default defineComponent({
         // Добавление нового чата
         async add_chat() {
             try {
-                const accessToken = this.getCookie('access_token');
+                const accessToken = Cookies.get('access_token');
 
                 const response = await axios.post(`/api/users/me/chat_sessions/add`,
                     {},
@@ -384,7 +349,7 @@ export default defineComponent({
             if (!newTitle) return
 
             try {
-                const token = this.getCookie('access_token')
+                const token = Cookies.get('access_token')
                 await axios.put(`/api/users/me/chat_sessions/${id}/update`, { title: newTitle },
                     { headers: { Authorization: `Bearer ${token}` } }
                 );
@@ -407,8 +372,8 @@ export default defineComponent({
             if (this.selectedChatId === chatId) this.selectedChatId = null
 
             try {
-                const token = this.getCookie('access_token')
-                const response = await axios.delete(`/api/users/me/chat_sessions/${chatId}/delete`,
+                const token = Cookies.get('access_token')
+                await axios.delete(`/api/users/me/chat_sessions/${chatId}/delete`,
                     { headers: { Authorization: `Bearer ${token}` } }
                 );
 
@@ -449,7 +414,7 @@ export default defineComponent({
         // Получение сообщений из чата
         async get_messages() {
             try {
-                const accessToken = this.getCookie('access_token')
+                const accessToken = Cookies.get('access_token')
 
                 const response = await axios.get(`/api/users/me/chat_sessions/${this.selectedChatId}/messages`,
                     { headers: { 'Authorization': `Bearer ${accessToken}` } }
@@ -477,7 +442,7 @@ export default defineComponent({
             if (!text || !this.selectedChatId) return
 
             try {
-                const accessToken = this.getCookie('access_token');
+                const accessToken = Cookies.get('access_token');
 
                 await axios.post(`/api/users/me/chat_sessions/${this.selectedChatId}/messages/add`,
                     { context: text, sender: 'user' },
@@ -521,7 +486,7 @@ export default defineComponent({
         },
         // Получение ответа от нейросети
         async fetchAnswer(prompt: string): Promise<string> {
-            const token = this.getCookie('access_token')
+            const token = Cookies.get('access_token')
             const { data } = await axios.post(
                 '/api/chat/answer',
                 { chat_id: this.selectedChatId, text: prompt, mode: this.selectedMode },
@@ -553,10 +518,12 @@ export default defineComponent({
 .selected_chat {
     background-color: #D9D9D9;
 }
+
 .chat-menu-item:hover {
     background: #f5f5f5;
     cursor: pointer;
 }
+
 .chat-menu-item+.chat-menu-item {
     border-top: 1px solid #eee;
 }
