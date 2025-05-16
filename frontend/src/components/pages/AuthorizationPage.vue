@@ -29,6 +29,7 @@
 import { defineComponent } from 'vue'
 import axios from 'axios';
 import Cookies from 'js-cookie';
+import { useAuthStore } from '@/stores/auth' 
 
 export default defineComponent({
     name: 'AuthorizationPage',
@@ -96,6 +97,8 @@ export default defineComponent({
                     this.formData.password = ''
 
                     Cookies.set('access_token', response.data.access_token, { path: '/' });
+                    const auth = useAuthStore();
+                    await auth.fetchCurrentUser()
                     this.$router.push('/disciplines');
                 } else {
                     throw new Error(response.data.error || 'Неизвестная ошибка');

@@ -2,9 +2,17 @@
   <RouterView />
 </template>
 
-<script setup lang="ts">
+<script lang="ts">
 import { RouterView } from 'vue-router'
-</script>
+import { useAuthStore } from '@/stores/auth'
+import { defineComponent } from 'vue'
 
-<style>
-</style>
+export default defineComponent({
+  name: 'App',
+  created() {
+    // при инициализации приложения запрашиваем текущего пользователя
+    const auth = useAuthStore()
+    auth.fetchCurrentUser()
+  }
+})
+</script>

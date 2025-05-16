@@ -7,7 +7,7 @@
             </div>
             <div class="d-flex align-items-center mt-5 justify-content-center">
                 <router-link class="btn add_discipline d-flex justify-content-center align-items-center text-white"
-                    :to="{ name: 'discipline-new' }">
+                    :to="{ name: 'discipline-new' }" v-if="user?.role === 'teacher'">
                     <img src="@/assets/book.svg" alt="Новый чат" width="34" class="me-2" />Добавить дисциплину
                 </router-link>
             </div>
@@ -24,7 +24,7 @@
             <div class="d-flex flex-column align-items-center mt-auto mb-4 gap-2">
                 <router-link
                     class="btn students_button text-white d-flex align-items-center justify-content-center rounded-3"
-                    :to="{ name: 'students' }">Студенты</router-link>
+                    :to="{ name: 'students' }" v-if="user?.role === 'teacher'">Студенты</router-link>
                 <!-- Кнопка профиля со всплывающей информацией о пользователе -->
                 <ProfileButton />
             </div>
@@ -37,6 +37,7 @@ import { defineComponent } from 'vue'
 import axios from 'axios';
 import ProfileButton from '@/components/ui/ProfileButton.vue';
 import Cookies from 'js-cookie';
+import { useAuthStore } from '@/stores/auth' 
 
 export default defineComponent({
     name: 'LeftPanel',
@@ -47,6 +48,11 @@ export default defineComponent({
         showPanel: {
             type: Boolean,
             default: false
+        }
+    },
+    computed: {
+        user() {
+            return useAuthStore().user
         }
     },
     data() {

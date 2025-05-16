@@ -34,6 +34,7 @@
 import { defineComponent } from 'vue';
 import axios from 'axios';
 import Cookies from 'js-cookie';
+import { useAuthStore } from '@/stores/auth'
 import ChangeUserInfoModal from '@/components/ui/ChangeUserInfoModal.vue';
 
 export default defineComponent({
@@ -77,6 +78,8 @@ export default defineComponent({
         // Выйти из аккаунта
         logout() {
             Cookies.remove('access_token', { path: '/' });
+            const auth = useAuthStore();
+            auth.clearUser()
             this.$router.push('/');
         },
         /* показ / скрытие поп-апа */
