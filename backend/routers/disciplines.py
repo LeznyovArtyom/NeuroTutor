@@ -4,7 +4,7 @@ from typing import Annotated, Optional, List
 from pydantic import BaseModel
 from sqlmodel import Session, select
 from database import get_session
-from models import User as UserModel, Discipline as DisciplineModel, Document as DocumentModel
+from models import User as UserModel, Discipline as DisciplineModel, Document as DocumentModel, TeacherStudent as TeacherStudentModel, UserWork as UserWorkModel, Work as WorkModel
 import base64
 from core.security import oauth2_scheme, decode_access_token
 
@@ -40,8 +40,19 @@ async def get_user_disciplines(token: Annotated[str, Depends(oauth2_scheme)], se
 
     if not user:
         raise HTTPException(status_code=404, detail="Пользователь не найден")
-
-    disciplines = session.exec(select(DisciplineModel).where(DisciplineModel.teacher_id == user.id)).all()
+    
+    if user.role == "teacher":
+        # все дисциплины преподавателя
+        disciplines = session.exec(select(DisciplineModel).where(DisciplineModel.teacher_id == user.id)).all()
+    elif user.role == "student":
+        # получаем всех преподавателей, у которых студент в списке
+        teacher_ids = session.exec(select(TeacherStudentModel.teacher_id).where(TeacherStudentModel.student_id == user.id)).all()
+        if not teacher_ids:
+            disciplines = []
+        else:
+            disciplines = session.exec(select(DisciplineModel).where(DisciplineModel.teacher_id.in_(teacher_ids))).all()
+    else:
+        disciplines = []
 
     disciplines_data = [
         {
@@ -110,14 +121,51 @@ async def get_discipline_info(discipline_id: int, token: Annotated[str, Depends(
     if not user:
         raise HTTPException(status_code=404, detail="Пользователь не найден")
 
-    discipline = session.exec(select(DisciplineModel).where(DisciplineModel.id == discipline_id, DisciplineModel.teacher_id == user.id)).first()
-
+    # Шаг 1: забираем дисциплину по ID
+    discipline = session.exec(select(DisciplineModel).where(DisciplineModel.id == discipline_id)).first()
     if not discipline:
-        raise HTTPException(status_code=404, detail="Дисциплина не найдена")
+        raise HTTPException(404, "Дисциплина не найдена")
+
+    # Шаг 2: проверяем права
+    if user.role == "teacher":
+        # у преподавателя должна совпадать связь
+        if discipline.teacher_id != user.id:
+            raise HTTPException(404, "Дисциплина не найдена")
+    elif user.role == "student":
+        # у студента должна быть запись teacher_student для этого препода
+        has_access = session.exec(select(TeacherStudentModel).where(TeacherStudentModel.teacher_id == discipline.teacher_id, TeacherStudentModel.student_id == user.id)).first()
+        if not has_access:
+            raise HTTPException(403, "У вас нет доступа к этой дисциплине")
+    else:
+        # прочие роли не имеют доступа
+        raise HTTPException(403, "Недостаточно прав")
+
+    # Шаг 3: собираем список работ
+    if user.role == 'teacher':
+        # преподавателю отдаём все работы
+        works_data = [
+            {"id": w.id, "name": w.name, "number": w.number}
+            for w in discipline.works
+        ]
+    else:
+        # студенту — только назначенные
+        rows = session.exec(
+            select(WorkModel, UserWorkModel.status)
+            .join(UserWorkModel, UserWorkModel.work_id == WorkModel.id)
+            .where(WorkModel.discipline_id == discipline_id, UserWorkModel.student_id == user.id,)).all()
+        works_data = [
+            {
+                "id": work.id,
+                "name": work.name, 
+                "number": work.number,
+                "status": status
+            } for work, status in rows
+        ]
 
     return JSONResponse({"Discipline": {
         "id": discipline.id,
         "name": discipline.name,
+        "teacher": f"{discipline.teacher.last_name} {discipline.teacher.first_name}",
         "documents": [
             {
                 "id": document.id,
@@ -125,13 +173,7 @@ async def get_discipline_info(discipline_id: int, token: Annotated[str, Depends(
                 "data": base64.b64encode(document.data).decode()
             } for document in discipline.documents
         ],
-        "works": [
-            {
-                "id": work.id,
-                "name": work.name,
-                "number": work.number,
-            } for work in discipline.works
-        ]
+        "works": works_data
     }}, status_code=200)
 
 
