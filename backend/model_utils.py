@@ -4,17 +4,15 @@ from transformers import AutoTokenizer, AutoModelForCausalLM
 import torch
 
 MODEL_NAME       = "google/gemma-3-1b-it"
-MAX_NEW_TOKENS   = 2048
+MAX_NEW_TOKENS   = 512
 TEMPERATURE      = 0.5
 TOP_P            = 0.9
 
 
 @lru_cache                 # ──> загрузится ровно один раз
 def load_model():
-    tok = AutoTokenizer.from_pretrained(MODEL_NAME, use_fast=True)
-    mdl = AutoModelForCausalLM.from_pretrained(
-        MODEL_NAME, device_map="auto", torch_dtype="auto"
-    )
+    tok = AutoTokenizer.from_pretrained(MODEL_NAME, use_fast=True, trust_remote_code=True)
+    mdl = AutoModelForCausalLM.from_pretrained(MODEL_NAME, device_map="auto", torch_dtype="auto", trust_remote_code=True)
     mdl.eval()
     return tok, mdl
 

@@ -11,6 +11,7 @@ import AddWork from '@/components/ui/AddWork.vue'
 import EditWork from '@/components/ui/EditWork.vue'
 import WorkDetail from '@/components/ui/WorkDetail.vue'
 import StudentsPage from '@/components/pages/StudentsPage.vue'
+import Chat from '@/components/ui/Chat.vue'
 
 const router = createRouter({
   history: createWebHistory(import.meta.env.BASE_URL),
@@ -60,7 +61,7 @@ const router = createRouter({
           name : 'work-add',
           component: AddWork,
           props: route => ({ id: Number(route.params.id) }),
-          meta : { title:'Добавить новую работу', roles: ['teacher'] }
+          meta : { title: 'Добавить новую работу', roles: ['teacher'] }
         },
         {
           path : ':id(\\d+)/work/:workId(\\d+)',
@@ -80,6 +81,16 @@ const router = createRouter({
             workId: Number(route.params.workId),
           }),
           meta : { title:'Изменить информацию о работе', roles: ['teacher'] }
+        },
+        {
+          path : ':id(\\d+)/work/:workId(\\d+)/chat',
+          name : 'chat',
+          component: Chat,
+          props: route => ({ 
+            id: Number(route.params.id),
+            workId: Number(route.params.workId),
+          }),
+          meta : { title: 'Сдача работы', roles: ['student'] }
         }
       ]
     },
@@ -91,7 +102,7 @@ const router = createRouter({
     },
     {
       path: '/chat',
-      name: 'chat',
+      name: 'chat_page',
       component: ChatPage,
       meta: { requiresAuth: true }
     }

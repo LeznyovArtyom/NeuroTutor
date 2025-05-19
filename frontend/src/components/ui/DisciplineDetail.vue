@@ -1,6 +1,4 @@
 <template>
-    <router-link class="btn help_button text-white rounded-3 mt-5 d-flex align-items-center justify-content-center"
-        :to="{ name: 'chat' }" v-if="user?.role === 'student'">Обратиться за помощью</router-link>
     <div class="d-flex justify-content-between mb-2 mt-5">
         <div class="title">Дисциплина</div>
         <template v-if="user?.role === 'teacher'">
@@ -31,7 +29,8 @@
                 class="d-flex flex-column align-items-center file-item">
                 <img src="@/assets/file_icon.svg" alt="Файл" width="100" />
                 <small class="text-center mt-1">{{ truncateString(document.name, 22) }}</small>
-                <button class="btn delete_file btn-link p-0 mt-1" @click="prepareDeleteDocument(document)" data-bs-toggle="modal" data-bs-target="#deleteDocumentModal">
+                <button class="btn delete_file btn-link p-0 mt-1" @click="prepareDeleteDocument(document)"
+                    data-bs-toggle="modal" data-bs-target="#deleteDocumentModal">
                     Удалить файл
                 </button>
             </div>
@@ -79,7 +78,8 @@
                     </button>
                 </td>
                 <td v-else class="text-center">
-                    <router-link class="btn play_button p-0 m-0" title="Сдать работу" :to="{ name: 'chat' }">
+                    <router-link class="btn play_button p-0 m-0" title="Сдать работу"
+                        :to="{ name: 'chat', params: { id: id, workId: work.id } }">
                         <i class="bi bi-play-fill"></i>
                     </router-link>
                 </td>
@@ -413,6 +413,7 @@ export default defineComponent({
     color: #5B5A5A;
     text-decoration: none;
 }
+
 .delete_file:hover {
     text-decoration: underline;
 }

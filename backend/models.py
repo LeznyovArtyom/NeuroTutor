@@ -73,9 +73,11 @@ class Chat(SQLModel, table=True):
     mode: str = Field(max_length=45)
     document_data: Optional[bytes] = Field(sa_column=Column(LONGBLOB()))
     user_id: int = Field(sa_column=Column(ForeignKey("user.id", ondelete="CASCADE")))
+    work_id: Optional[int] = Field(sa_column=Column(ForeignKey("work.id", ondelete="CASCADE")))
 
     user: Optional[User] = Relationship(back_populates="chats")
     messages: List["Message"] = Relationship(back_populates="chat", sa_relationship_kwargs={"passive_deletes": True})
+    work: Optional["Work"] = Relationship(back_populates="chats")
  
 
 class Message(SQLModel, table=True):
@@ -133,3 +135,4 @@ class Work(SQLModel, table=True):
         link_model=UserWork,
         sa_relationship_kwargs={"passive_deletes": True,}
     )
+    chats: List["Chat"] = Relationship(back_populates="work")

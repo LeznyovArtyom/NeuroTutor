@@ -37,7 +37,7 @@ import { defineComponent } from 'vue'
 import axios from 'axios';
 import ProfileButton from '@/components/ui/ProfileButton.vue';
 import Cookies from 'js-cookie';
-import { useAuthStore } from '@/stores/auth' 
+import { useAuthStore } from '@/stores/auth'
 
 export default defineComponent({
     name: 'LeftPanel',
@@ -84,8 +84,10 @@ export default defineComponent({
         },
         // Выбрать дисциплину
         async selectDiscipline(id: number) {
-            if (this.selectedDisciplineId === id) return // повторный клик – ничего не делаем
-            this.$router.push({ name: 'discipline-detail', params: { id } })
+            // Если уже именно на странице discipline-detail c этим id — ничего не делаем
+            if (this.$route.name === 'discipline-detail' && Number(this.$route.params.id) === id) return;
+            // Иначе — всегда переходим на detail нужной дисциплины
+            this.$router.push({ name: 'discipline-detail', params: { id } });
         },
         /** подсветка активной дисциплины по URL */
         syncSelectedFromRoute() {
