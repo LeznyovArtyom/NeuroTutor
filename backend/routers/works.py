@@ -138,7 +138,7 @@ async def get_work_info(discipline_id: int, work_id: int, token: Annotated[str, 
         .where(UserWorkModel.work_id == work_id)
     ).all()
 
-    return JSONResponse({"Work": {
+    work_data = {
         "id": work.id,
         "name": work.name,
         "task": work.task,
@@ -154,7 +154,14 @@ async def get_work_info(discipline_id: int, work_id: int, token: Annotated[str, 
                 "status": status
             } for student, status in students
         ]
-    }}, status_code=200)
+    }
+
+    # Подгружаем статус, если студент
+    if user.role == 'student':
+        student_status = session.exec(select(UserWorkModel.status).where(UserWorkModel.work_id == work_id, UserWorkModel.student_id == user.id)).first()
+        work_data["status"] = student_status or "Не начата"
+
+    return JSONResponse({"Work": work_data}, status_code=200)
 
 
 # Обновить информацию о работе

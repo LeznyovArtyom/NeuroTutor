@@ -14,45 +14,55 @@
         <div>{{ work.document_section }}</div>
     </div>
 
-    <div class="d-flex justify-content-between mt-5">
-        <div class="title align-self-end">Студенты</div>
-        <button
-            class="btn action_button add_student text-white rounded-3 d-flex align-items-center justify-content-center"
-            data-bs-toggle="modal" data-bs-target="#addStudentModal">Добавить
-        </button>
+    <div class="d-flex align-items-center mt-5 gap-4" v-if="user?.role === 'student'">
+        <div class="title">Статус сдачи работы</div>
+        <div>{{ work.status }}</div>
     </div>
 
-    <table class="table text-nowrap table-hover border-top mt-3">
-        <thead class="text-uppercase">
-            <tr>
-                <th>Фамилия</th>
-                <th>Имя</th>
-                <th>Статус сдачи работы</th>
-                <th class="text-center">Действия</th>
-            </tr>
-        </thead>
-        <tbody>
-            <tr v-for="student in assignedStudents" :key="student.id">
-                <td>{{ student.last_name }}</td>
-                <td>{{ student.first_name }}</td>
-                <td>{{ student.status }}</td>
-                <td class="text-center">
-                    <button class="btn remove_button p-0 m-0" title="Убрать студента из работы"
-                        @click="prepareRemoveStudent(student)" data-bs-toggle="modal"
-                        data-bs-target="#removeStudentFromWorkModal">
-                        <i class="bi bi-trash"></i>
-                    </button>
-                </td>
-            </tr>
-        </tbody>
-    </table>
+    <template v-if="user?.role === 'teacher'">
+        <div class="d-flex justify-content-between mt-5">
+            <div class="title align-self-end">Студенты</div>
+            <button
+                class="btn action_button add_student text-white rounded-3 d-flex align-items-center justify-content-center"
+                data-bs-toggle="modal" data-bs-target="#addStudentModal">Добавить
+            </button>
+        </div>
+
+        <table class="table text-nowrap table-hover border-top mt-3">
+            <thead class="text-uppercase">
+                <tr>
+                    <th>Фамилия</th>
+                    <th>Имя</th>
+                    <th>Статус сдачи работы</th>
+                    <th class="text-center">Действия</th>
+                </tr>
+            </thead>
+            <tbody>
+                <tr v-for="student in assignedStudents" :key="student.id">
+                    <td>{{ student.last_name }}</td>
+                    <td>{{ student.first_name }}</td>
+                    <td>{{ student.status }}</td>
+                    <td class="text-center">
+                        <button class="btn remove_button p-0 m-0" title="Убрать студента из работы"
+                            @click="prepareRemoveStudent(student)" data-bs-toggle="modal"
+                            data-bs-target="#removeStudentFromWorkModal">
+                            <i class="bi bi-trash"></i>
+                        </button>
+                    </td>
+                </tr>
+            </tbody>
+        </table>
+    </template>
     <div class="d-flex justify-content-end mt-auto">
         <router-link
             class="btn action_button back_button text-white rounded-3 d-flex align-items-center justify-content-center"
             :to="{ name: 'discipline-detail', params: { id: id } }">Назад</router-link>
-        <router-link
+        <router-link v-if="user?.role === 'teacher'"
             class="btn action_button edit_button text-white rounded-3 ms-3 d-flex align-items-center justify-content-center"
             :to="{ name: 'work-edit', params: { id: id, workId: workId } }">Изменить</router-link>
+        <router-link v-if="user?.role === 'student'"
+            class="btn action_button begin_button text-white rounded-3 ms-3 d-flex align-items-center justify-content-center"
+            :to="{ name: 'chat' }">Приступить</router-link>
     </div>
 
     <div class="modal fade" id="addStudentModal" tabindex="-1" aria-labelledby="addStudentModalLabel"
@@ -132,6 +142,7 @@ import { defineComponent } from 'vue';
 import axios from 'axios';
 import debounce from 'lodash.debounce'
 import Cookies from 'js-cookie';
+import { useAuthStore } from '@/stores/auth'
 
 interface User {
     id: number
@@ -166,7 +177,8 @@ export default defineComponent({
                 task: '',
                 number: 0,
                 document: '',
-                document_section: ''
+                document_section: '',
+                status: ''
             },
             // Назанченные в работу в студенты
             assignedStudents: [] as Assigned[],
@@ -179,6 +191,11 @@ export default defineComponent({
             showSuggestions: false,
             selectedUsers: [] as User[],
             studentToRemove: { id: 0, last_name: '', first_name: '' } as { id: number; last_name: string; first_name: string }
+        }
+    },
+    computed: {
+        user() {
+            return useAuthStore().user
         }
     },
     methods: {
@@ -196,6 +213,9 @@ export default defineComponent({
                 this.work.number = response.data.Work.number;
                 this.work.document = response.data.Work.document_name;
                 this.work.document_section = response.data.Work.document_section;
+                if (response.data.Work.status) {
+                    this.work.status = response.data.Work.status;
+                }
 
                 this.assignedStudents = response.data.Work.students;
 
@@ -336,7 +356,8 @@ export default defineComponent({
 }
 
 .add_student,
-.edit_button {
+.edit_button,
+.begin_button {
     background-color: #53B1F5;
 }
 
