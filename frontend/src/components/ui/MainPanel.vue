@@ -12,7 +12,7 @@
             </div>
         </div>
         <div class="main_area px-5 d-flex flex-column flex-grow-1 chat_content mx-auto"
-            style="overflow-y: auto; padding-bottom: 62px; width: 1250px;">
+            style="overflow-y: auto; padding-bottom: 62px; max-width: 1250px; width: 100%;">
             <slot></slot>
         </div>
     </div>
@@ -28,9 +28,9 @@ export default defineComponent({
             type: Boolean,
             default: false
         },
-        pageTitle: { 
-            type: String, 
-            default: '' 
+        pageTitle: {
+            type: String,
+            default: ''
         }
     },
     emits: ['togglePanel'],
@@ -59,8 +59,12 @@ export default defineComponent({
     box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
     transition: left 0.3s ease;
 }
+
 .header_name {
     font-size: 24px;
+    overflow: hidden;
+    white-space: nowrap;
+    text-overflow: ellipsis;
 }
 
 .main_panel {

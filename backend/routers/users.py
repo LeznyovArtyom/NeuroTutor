@@ -92,7 +92,7 @@ async def login_user(user_data: UserLogin, session: Session = Depends(get_sessio
 
 # Получить информацию о пользователе
 @router.get("/users/me", summary="Получить инфорацию о текущем пользователе", tags=["Пользователи"])
-async def get_info_about_me(token: Annotated[str, Depends(oauth2_scheme)], session: Session = Depends(get_session)):
+async def get_user_info(token: Annotated[str, Depends(oauth2_scheme)], session: Session = Depends(get_session)):
     """
     Возвращает информацию о пользователе.
     Требуется авторизация с использованием токена доступа.

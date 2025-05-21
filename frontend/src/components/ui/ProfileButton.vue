@@ -106,9 +106,13 @@ export default defineComponent({
 </script>
 
 <style scoped>
+.profile_button_container {
+    max-width: 247px;
+    width: 100%;
+}
 .profile_button {
     background-color: #8eb3ce;
-    width: 247px;
+    width: 100%;
     height: 42px;
     font-size: inherit;
 }
@@ -119,7 +123,8 @@ export default defineComponent({
     bottom: 50px;
     left: 50%;
     transform: translateX(-50%);
-    width: 247px;
+    max-width: 247px;
+    width: 100%;
     min-height: 180px;
     background: #fff;
     border: 1px solid #ccc;

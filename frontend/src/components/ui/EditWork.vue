@@ -11,7 +11,7 @@
         </select>
     </div>
     <div class="d-flex justify-content-between mt-5">
-        <div>
+        <div class="document_container me-3">
             <div class="title">Документ</div>
             <select class="form-select select_document mt-3" v-model="work.document_id">
                 <option value=""></option>
@@ -19,7 +19,7 @@
                 </option>
             </select>
         </div>
-        <div>
+        <div class="section_container">
             <div class="title">Раздел</div>
             <input type="text" class="form-control section_input mt-3" v-model="work.document_section">
         </div>
@@ -177,12 +177,14 @@ export default defineComponent({
     font-size: 24px;
 }
 
-.select_document {
-    width: 350px;
+.document_container {
+    max-width: 350px;
+    width: 100%;
 }
 
-.section_input {
-    width: 700px;
+.section_container {
+    max-width: 700px;
+    width: 100%;
 }
 
 .action_button {

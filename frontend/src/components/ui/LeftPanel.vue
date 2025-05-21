@@ -1,34 +1,36 @@
 <template>
     <transition name="slide-fade">
-        <div v-if="showPanel" class="left_panel pt-3 d-flex flex-column">
-            <div class="namelogo d-flex align-items-center justify-content-center">
-                <div class="logo"><img src="@/assets/neurotutor_logo.svg" alt="Лого" width="66" /></div>
+        <aside v-if="showPanel" class="left_panel pt-3 d-flex flex-column">
+            <div class="namelogo d-flex align-items-center justify-content-center px-2">
+                <div class="logo"><img class="logo_icon" src="@/assets/neurotutor_logo.svg" alt="Лого" /></div>
                 <div class="site_name ms-2 fw-semibold">NeuroTutor</div>
             </div>
-            <div class="d-flex align-items-center mt-5 justify-content-center">
-                <router-link class="btn add_discipline d-flex justify-content-center align-items-center text-white"
+            <div class="d-flex align-items-center mt-5 justify-content-center px-2">
+                <router-link
+                    class="btn add_discipline d-flex justify-content-center align-items-center text-white px-2 py-1 text-nowrap"
                     :to="{ name: 'discipline-new' }" v-if="user?.role === 'teacher'">
-                    <img src="@/assets/book.svg" alt="Новый чат" width="34" class="me-2" />Добавить дисциплину
+                    <img src="@/assets/book.svg" alt="Новый чат" class="book_icon me-2" />
+                    <span class="add_discipline_text">Добавить дисциплину</span>
                 </router-link>
             </div>
             <div class="disciplines_list_name mt-4 mb-2 ms-3 fw-medium">Список дисциплин</div>
-            <div class="disciplines_list">
+            <div class="disciplines_list border-bottom">
                 <div v-for="discipline in disciplines" :key="discipline.id"
                     class="discipline d-flex align-items-center px-3 rounded-2"
                     :class="{ selected_discipline: selectedDisciplineId === discipline.id }"
                     @click="selectDiscipline(discipline.id)">
-                    {{ truncateString(discipline.name, 30) }}
+                    <span class="d-block text-truncate">{{ discipline.name }}</span>
                 </div>
             </div>
 
-            <div class="d-flex flex-column align-items-center mt-auto mb-4 gap-2">
+            <div class="d-flex flex-column align-items-center my-4 gap-2 px-2">
                 <router-link
                     class="btn students_button text-white d-flex align-items-center justify-content-center rounded-3"
                     :to="{ name: 'students' }" v-if="user?.role === 'teacher'">Студенты</router-link>
                 <!-- Кнопка профиля со всплывающей информацией о пользователе -->
                 <ProfileButton />
             </div>
-        </div>
+        </aside>
     </transition>
 </template>
 
@@ -98,11 +100,7 @@ export default defineComponent({
         updateDisciplineName(id: number, name: string) {
             const d = this.disciplines.find(d => d.id === id)
             if (d) { d.name = name }
-        },
-        // Обрезка строки в соответствии с количеством символов
-        truncateString(str: string, num: number): string {
-            return str.length > num ? str.slice(0, num) + "..." : str;
-        },
+        }
     },
     async mounted() {
         await this.get_disciplines()
@@ -121,20 +119,33 @@ export default defineComponent({
 </script>
 
 <style scoped>
+.logo_icon {
+    max-width: 66px;
+    width: 100%;
+}
+
 .site_name {
-    font-size: 36px
+    font-size: 2rem;
+}
+
+.book_icon {
+    max-width: 2rem;
+    width: 100%;
 }
 
 .add_discipline {
     background-color: #d74f37;
-    width: 311px;
-    height: 42px;
+    max-width: 311px;
+    width: 100%;
     font-size: inherit;
 }
 
 .discipline {
     height: 33px;
     cursor: pointer;
+    overflow: hidden;
+    white-space: nowrap;
+    text-overflow: ellipsis;
 }
 
 /* Выбор дисциплины */
@@ -172,8 +183,32 @@ export default defineComponent({
 
 .students_button {
     background-color: #53B1F5;
-    width: 247px;
+    max-width: 247px;
+    width: 100%;
     height: 42px;
     font-size: inherit;
+}
+
+@media (max-width: 1750px) {
+    .add_discipline {
+        font-size: 1rem;
+    }
+}
+
+/* Скролл списка дисциплин */
+.disciplines_list {
+  flex: 1 1 auto;        /* занимает всё оставшееся место */
+  overflow-y: auto;      /* добавляет вертикальную полосу прокрутки */
+}
+.discipline {
+  box-sizing: border-box;
+}
+.text-truncate {
+  display: block;
+  width: 100%;
+  box-sizing: border-box;
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
 }
 </style>

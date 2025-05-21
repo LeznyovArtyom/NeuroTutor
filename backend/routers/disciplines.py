@@ -27,9 +27,9 @@ class DisciplineUpdate(BaseModel):
     documents: Optional[List[Document]] = None
     
 
-# Получить все дисциплины текущего преподавателя
+# Получить дисциплины
 @router.get("/users/me/disciplines", summary="Получить все дисциплины текущего преподавателя", tags=["Дисциплины"])
-async def get_user_disciplines(token: Annotated[str, Depends(oauth2_scheme)], session: Session = Depends(get_session)):
+async def get_disciplines(token: Annotated[str, Depends(oauth2_scheme)], session: Session = Depends(get_session)):
     """
     Возвращает список всех дисциплин текущего преподавателя.
     Требуется авторизация с использованием токена доступа.

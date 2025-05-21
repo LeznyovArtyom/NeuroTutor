@@ -85,7 +85,7 @@ async def add_new_work_to_discipline(discipline_id: int, work_data: Work, token:
 
 # Удалить работу из дисциплины
 @router.delete("/disciplines/{discipline_id}/work/{work_id}/delete", summary="Удалить работу из дисциплины", tags=["Работы"])
-async def delete_work(discipline_id: int, work_id: int, token: Annotated[str, Depends(oauth2_scheme)], session: Session = Depends(get_session)):
+async def delete_work_from_discipline(discipline_id: int, work_id: int, token: Annotated[str, Depends(oauth2_scheme)], session: Session = Depends(get_session)):
     """
     Удаляет работу из дисциплины.
     Требуется авторизация с использованием токена доступа.

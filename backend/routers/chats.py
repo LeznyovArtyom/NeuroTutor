@@ -61,7 +61,7 @@ async def get_or_create_chat(work_id: int, token: Annotated[str, Depends(oauth2_
 
 # Добавить сообщение от пользователя и получить сообщение от LLM
 @router.post("/chat/{chat_id}/messages/add", summary="Добавить сообщение от пользователя и получить сообщение от LLM", tags=["Чаты"])
-async def add_message(chat_id: int, message_data: Message, token: Annotated[str, Depends(oauth2_scheme)], session: Session = Depends(get_session)):
+async def add_message_and_generate_answer(chat_id: int, message_data: Message, token: Annotated[str, Depends(oauth2_scheme)], session: Session = Depends(get_session)):
     """
     Сохраняем сообщение пользователя и вызываем LLM.
     Возвращаем ответ LLM и сообщение пользователя.

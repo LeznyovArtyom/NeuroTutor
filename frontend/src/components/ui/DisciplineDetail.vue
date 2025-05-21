@@ -16,7 +16,7 @@
             </div>
         </template>
     </div>
-    <div v-if="!isEditing" class="mt-3">{{ discipline.name }}</div>
+    <div v-if="!isEditing" class="discipline_name mt-3">{{ discipline.name }}</div>
     <input v-else class="form-control mt-3" v-model="newDiscipline.name" />
 
     <template v-if="user?.role === 'teacher'">
@@ -51,7 +51,12 @@
         </router-link>
     </div>
 
-    <table class="table text-nowrap table-hover border-top mt-3">
+    <table class="table text-nowrap table-hover border-top mt-3 table-fixed">
+        <colgroup>
+            <col :style="{ width: user?.role === 'student' ? '50%' : '80%' }">
+            <col v-if="user?.role === 'student'" style="width: 30%;">
+            <col style="width: 20%;">
+        </colgroup>
         <thead class="text-uppercase">
             <tr>
                 <th>Название</th>
@@ -62,7 +67,7 @@
         <tbody>
             <tr v-for="work in works">
                 <td>
-                    <router-link class="work-title text-decoration-none"
+                    <router-link class="text-truncate work-title text-decoration-none d-block"
                         :to="{ name: 'work-detail', params: { id: id, workId: work.id } }">{{ work.name }}
                     </router-link>
                 </td>
@@ -382,20 +387,33 @@ export default defineComponent({
 </script>
 
 <style scoped>
-.help_button {
-    width: 215px;
-    height: 85px;
-    font-size: inherit;
-}
-
 .title {
     font-size: 24px;
 }
 
+.discipline_name {
+    box-sizing: border-box;
+    overflow: hidden;
+    white-space: nowrap;
+    text-overflow: ellipsis;
+}
+
+.table-fixed {
+    /* фиксируем раскладку таблицы */
+    table-layout: fixed;
+    /* браузер больше не растягивает колонки */
+    width: 100%;
+}
+
+.work-title {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
 .change_discipline_name,
 .save_change,
-.add_work,
-.help_button {
+.add_work {
     background-color: #53B1F5;
 }
 

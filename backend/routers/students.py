@@ -15,7 +15,7 @@ class AddStudentsToList(BaseModel):
     ids: list[int]
 
 
-# Получить список студентов по совпадению
+# Поиск студентов по совпадению фамилии или логина
 @router.get("/users/search", summary="Поиск пользователей по фамилии или логину", tags=["Студенты"])
 async def search_users(token: Annotated[str, Depends(oauth2_scheme)], session: Session = Depends(get_session), query: str = Query(..., min_length=2, description="Фрагмент фамилии или логина")):
     """
@@ -103,7 +103,7 @@ async def add_students_to_list(studentsIds: AddStudentsToList, token: Annotated[
 
 # Удалить студента из списка преподавателя
 @router.delete("/users/me/student/{student_id}/remove", summary="Удалить студента из списка преподавателя", tags=["Студенты"])
-async def delete_work(student_id: int, token: Annotated[str, Depends(oauth2_scheme)], session: Session = Depends(get_session)):
+async def delete_student_from_list(student_id: int, token: Annotated[str, Depends(oauth2_scheme)], session: Session = Depends(get_session)):
     """
     Удаляет студента из списка преподавателя.
     Требуется авторизация с использованием токена доступа.
