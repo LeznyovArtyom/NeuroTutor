@@ -1,73 +1,76 @@
-# model_utils.py
+import os
 from functools import lru_cache
 import torch
+from huggingface_hub import login
 from peft import PeftModel
-from transformers import (
-    AutoTokenizer,
-    AutoModelForCausalLM,
-    BitsAndBytesConfig,
-)
-
-BASE_MODEL_NAME       = "google/gemma-3-1b-it"
-ADAPTER_PATH   = "fine-tuned-gemma"
-MAX_NEW_TOKENS   = 512
-TEMPERATURE      = 0.5
-TOP_P            = 0.9
+from transformers import AutoModelForCausalLM, AutoTokenizer
 
 
-# Квант-конфиг для 4-битной загрузки
-bnb_config = BitsAndBytesConfig(
-    load_in_4bit=True,
-    bnb_4bit_quant_type="nf4",
-    bnb_4bit_compute_dtype=torch.bfloat16,
-    bnb_4bit_use_double_quant=True,
-)
+# Авторизация в HuggingFace
+# HF_TOKEN = os.getenv("HF_TOKEN")
+# if HF_TOKEN:
+login("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")
 
 
-@lru_cache                 # ──> загрузится ровно один раз
+BASE_MODEL_NAME = "google/gemma-3-1b-it"
+ADAPTER_PATH    = "fine-tuned-gemma"
+
+MAX_NEW_TOKENS  = 512
+TEMPERATURE     = 0.5
+TOP_P           = 0.9
+
+
+# Однократная (кэшированная) загрузка
+@lru_cache
 def load_model():
+    """
+    Возвращает (tokenizer, model). Загружается один раз на процесс.
+    Если запущено через gunicorn --preload, память не копируется.
+    """
     # токенизатор
     tokenizer = AutoTokenizer.from_pretrained(
         ADAPTER_PATH,
         use_fast=True,
         trust_remote_code=True,
     )
-    if tokenizer.pad_token is None:
-        tokenizer.pad_token = tokenizer.eos_token
+    tokenizer.pad_token = tokenizer.pad_token or tokenizer.eos_token
 
-    # gemma 3 с квант-конфигом
-    base_model = AutoModelForCausalLM.from_pretrained(
+    # базовая Gemma
+    dtype  = torch.bfloat16          # экономит ×2 RAM на CPU
+    device = "cuda" if torch.cuda.is_available() else "cpu"
+
+    base = AutoModelForCausalLM.from_pretrained(
         BASE_MODEL_NAME,
-        device_map="auto",
-        quantization_config=bnb_config,
+        torch_dtype=dtype,
+        device_map="auto",            # на CPU – просто «cpu»
+        low_cpu_mem_usage=True,       # загружает блоками → меньше пик RAM
         trust_remote_code=True,
     )
-    base_model.eval()
+    base.eval()
 
-    # base_model + LoRA-адаптер
+    # LoRA-адаптер
     model = PeftModel.from_pretrained(
-        base_model,
+        base,
         ADAPTER_PATH,
+        torch_dtype=dtype,
         device_map="auto",
-        torch_dtype=torch.float16,  # или auto
     )
     model.eval()
 
     return tokenizer, model
 
 
+# Функция генерации
 def generate_once(prompt: str) -> str:
     """
-    Генерирует полный ответ нейросети за один вызов.
+    Генерирует полный ответ модели (без стриминга).
     """
     tok, mdl = load_model()
 
-    # Преобразуем входной текст в тензоры
     inputs = tok(prompt, return_tensors="pt").to(mdl.device)
 
-    # Генерация текста
     with torch.no_grad():
-        output_ids = mdl.generate(
+        out_ids = mdl.generate(
             **inputs,
             max_new_tokens=MAX_NEW_TOKENS,
             temperature=TEMPERATURE,
@@ -75,20 +78,4 @@ def generate_once(prompt: str) -> str:
             eos_token_id=tok.eos_token_id,
         )
 
-    # Декодируем сгенерированный текст
-    generated_text = tok.decode(output_ids[0], skip_special_tokens=True)
-    return generated_text
-
-
-def _sample_next(logits, *, temperature=TEMPERATURE, top_p=TOP_P):
-    logits = logits.squeeze(0) / temperature
-    probs  = torch.softmax(logits, dim=-1)
-
-    sorted_probs, sorted_idx = torch.sort(probs, descending=True)
-    cumsum = torch.cumsum(sorted_probs, dim=-1)
-    cut    = torch.searchsorted(cumsum, top_p).item()
-    sorted_probs[cut + 1:] = 0
-    sorted_probs /= sorted_probs.sum()
-
-    next_token = torch.multinomial(sorted_probs, 1)
-    return sorted_idx[next_token]
+    return tok.decode(out_ids[0], skip_special_tokens=True)

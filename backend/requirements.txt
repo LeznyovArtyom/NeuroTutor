@@ -1,0 +1,18 @@
+fastapi==0.115.12
+passlib==1.7.4
+peft==0.15.1
+pydantic==2.11.4
+PyJWT==2.10.1
+SQLAlchemy==2.0.31
+sqlmodel==0.0.24
+transformers==4.51.3
+uvicorn
+gunicorn
+pymysql
+bitsandbytes
+accelerate
+huggingface-hub
+
+# ---------- PyTorch (CPU) ----------
+--extra-index-url https://download.pytorch.org/whl/cpu     # сначала ссылка на колёса
+torch==2.6.0+cpu                                           # ↓  затем сам PyTorch
