@@ -52,7 +52,81 @@
                 </tr>
             </tbody>
         </table>
+
+        <!-- Модальное окно добавления студента в работу -->
+        <div class="modal fade" id="addStudentModal" tabindex="-1" aria-labelledby="addStudentModalLabel"
+            aria-hidden="true">
+            <div class="modal-dialog">
+                <div class="modal-content">
+                    <div class="modal-header">
+                        <h5 class="modal-title" id="addStudentModalLabel">
+                            Добавить студентов в работу
+                        </h5>
+                        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                    </div>
+                    <div class="modal-body">
+                        <div class="position-relative">
+                            <input type="text" class="form-control" placeholder="Поиск по фамилии или логину"
+                                v-model="query" @input="onInput" />
+                            <ul v-if="showSuggestions && suggestions.length"
+                                class="list-group position-absolute w-100 mt-1 zindex-tooltip"
+                                style="max-height:200px; overflow-y:auto;">
+                                <li v-for="user in suggestions" :key="user.id"
+                                    class="list-group-item list-group-item-action" @click="selectUser(user)">
+                                    {{ user.last_name }} {{ user.first_name }}
+                                    <small class="text-muted ms-2">({{ user.login }})</small>
+                                </li>
+                            </ul>
+                            <div v-if="query.length > 0 && query.length < 2" class="small text-muted mt-1">
+                                Введите минимум 2 символа
+                            </div>
+                        </div>
+                        <div class="mt-3">
+                            <div v-for="user in selectedUsers" :key="user.id"
+                                class="badge selectedStudents me-1 mb-1 align-middle">
+                                {{ user.last_name }} {{ user.first_name }}
+                                <button type="button" class="btn btn-close btn-close-white btn-sm ms-2"
+                                    aria-label="Удалить" @click="removeFromSelected(user.id)"></button>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="modal-footer">
+                        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Отмена</button>
+                        <button type="button" class="btn btn-primary" :disabled="!selectedUsers.length"
+                            @click="addStudentsToWork" data-bs-dismiss="modal">Добавить</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Модальное окно удаления студента из работы -->
+        <div class="modal fade" id="removeStudentFromWorkModal" tabindex="-1"
+            aria-labelledby="removeStudentFromWorkModalLabel" aria-hidden="true">
+            <div class="modal-dialog">
+                <div class="modal-content">
+                    <div class="modal-header">
+                        <h5 class="modal-title" id="removeStudentFromWorkModalLabel">Удаление студента из работы</h5>
+                        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                    </div>
+                    <div class="modal-body">
+                        Удалить студента
+                        <strong>{{ studentToRemove?.last_name }} {{ studentToRemove?.first_name }}</strong>
+                        из работы?
+                    </div>
+                    <div class="modal-footer">
+                        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">
+                            Отмена
+                        </button>
+                        <button type="button" class="btn btn-danger" @click="removeStudentFromWork"
+                            data-bs-dismiss="modal">
+                            Удалить
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
     </template>
+
     <div class="d-flex justify-content-end mt-auto">
         <router-link
             class="btn action_button back_button text-white rounded-3 d-flex align-items-center justify-content-center"
@@ -63,77 +137,6 @@
         <router-link v-if="user?.role === 'student'"
             class="btn action_button begin_button text-white rounded-3 ms-3 d-flex align-items-center justify-content-center"
             :to="{ name: 'chat' }">Приступить</router-link>
-    </div>
-
-    <div class="modal fade" id="addStudentModal" tabindex="-1" aria-labelledby="addStudentModalLabel"
-        aria-hidden="true">
-        <div class="modal-dialog">
-            <div class="modal-content">
-                <div class="modal-header">
-                    <h5 class="modal-title" id="addStudentModalLabel">
-                        Добавить студентов в работу
-                    </h5>
-                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
-                </div>
-                <div class="modal-body">
-                    <div class="position-relative">
-                        <input type="text" class="form-control" placeholder="Поиск по фамилии или логину"
-                            v-model="query" @input="onInput" />
-                        <ul v-if="showSuggestions && suggestions.length"
-                            class="list-group position-absolute w-100 mt-1 zindex-tooltip"
-                            style="max-height:200px; overflow-y:auto;">
-                            <li v-for="user in suggestions" :key="user.id"
-                                class="list-group-item list-group-item-action" @click="selectUser(user)">
-                                {{ user.last_name }} {{ user.first_name }}
-                                <small class="text-muted ms-2">({{ user.login }})</small>
-                            </li>
-                        </ul>
-                        <div v-if="query.length > 0 && query.length < 2" class="small text-muted mt-1">
-                            Введите минимум 2 символа
-                        </div>
-                    </div>
-                    <div class="mt-3">
-                        <div v-for="user in selectedUsers" :key="user.id"
-                            class="badge selectedStudents me-1 mb-1 align-middle">
-                            {{ user.last_name }} {{ user.first_name }}
-                            <button type="button" class="btn btn-close btn-close-white btn-sm ms-2" aria-label="Удалить"
-                                @click="removeFromSelected(user.id)"></button>
-                        </div>
-                    </div>
-                </div>
-                <div class="modal-footer">
-                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Отмена</button>
-                    <button type="button" class="btn btn-primary" :disabled="!selectedUsers.length"
-                        @click="addStudentsToWork" data-bs-dismiss="modal">Добавить</button>
-                </div>
-            </div>
-        </div>
-    </div>
-
-    <!-- Модальное окно удаления студента из работы -->
-    <div class="modal fade" id="removeStudentFromWorkModal" tabindex="-1"
-        aria-labelledby="removeStudentFromWorkModalLabel" aria-hidden="true">
-        <div class="modal-dialog">
-            <div class="modal-content">
-                <div class="modal-header">
-                    <h5 class="modal-title" id="removeStudentFromWorkModalLabel">Удаление студента из работы</h5>
-                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
-                </div>
-                <div class="modal-body">
-                    Удалить студента
-                    <strong>{{ studentToRemove?.last_name }} {{ studentToRemove?.first_name }}</strong>
-                    из работы?
-                </div>
-                <div class="modal-footer">
-                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">
-                        Отмена
-                    </button>
-                    <button type="button" class="btn btn-danger" @click="removeStudentFromWork" data-bs-dismiss="modal">
-                        Удалить
-                    </button>
-                </div>
-            </div>
-        </div>
     </div>
 </template>
 
@@ -180,11 +183,12 @@ export default defineComponent({
                 document_section: '',
                 status: ''
             },
-            // Назанченные в работу в студенты
+
+            // Назначенные в работу в студенты
             assignedStudents: [] as Assigned[],
 
-            // Студенты преподавателя
-            teacherStudents: [] as User[],
+            // Назначенные в работу студенты
+            disciplineStudents: [] as User[],
 
             query: '',
             suggestions: [] as User[],
@@ -231,16 +235,16 @@ export default defineComponent({
                 }
             }
         },
-        // Получить студентов преподавателя
-        async fetch_teacher_students() {
+        // Получить студентов дисциплины
+        async fetch_discipline_students() {
             try {
                 const access_token = Cookies.get('access_token');
 
-                const response = await axios.get('/api/users/me/students',
+                const response = await axios.get(`/api/users/me/disciplines/${this.id}`,
                     { headers: { Authorization: `Bearer ${access_token}` } }
                 );
 
-                this.teacherStudents = response.data.Students;
+                this.disciplineStudents = response.data.Discipline.students;
 
             } catch (error) {
                 console.log(error);
@@ -261,9 +265,10 @@ export default defineComponent({
                 this.suggestions = []
             }
         },
+        // Получить студентов в поиске для добавления в работу
         debouncedFetch: debounce(function (this: any) {
             const q = this.query.toLowerCase()
-            this.suggestions = this.teacherStudents
+            this.suggestions = this.disciplineStudents
                 .filter((user: { last_name: string; first_name: string; login: string; }) =>
                     (user.last_name + ' ' + user.first_name).toLowerCase().includes(q) ||
                     user.login.toLowerCase().includes(q)
@@ -334,7 +339,7 @@ export default defineComponent({
     async mounted() {
         await Promise.all([
             this.get_work_info(),
-            this.fetch_teacher_students(),
+            this.fetch_discipline_students(),
         ])
     }
 })

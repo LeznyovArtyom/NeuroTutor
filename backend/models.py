@@ -43,6 +43,12 @@ class TeacherStudent(SQLModel, table=True):
     student_id: Optional[int] = Field(sa_column=Column(ForeignKey("user.id", ondelete="RESTRICT"), primary_key=True))
 
 
+class StudentDiscipline(SQLModel, table=True):
+    __tablename__ = "student_discipline"
+    student_id: Optional[int] = Field(sa_column=Column(ForeignKey("user.id", ondelete="CASCADE"), primary_key=True))
+    discipline_id: Optional[int] = Field(sa_column=Column(ForeignKey("discipline.id", ondelete="CASCADE"), primary_key=True))
+
+
 class UserWork(SQLModel, table=True):
     __tablename__ = "user_work"
     student_id: Optional[int] = Field(sa_column=Column(ForeignKey("user.id", ondelete="CASCADE"), primary_key=True))
@@ -61,6 +67,12 @@ class User(SQLModel, table=True):
     # role: UserRole = Field(default=UserRole.STUDENT)
 
     disciplines: List["Discipline"] = Relationship(back_populates="teacher", sa_relationship_kwargs={"cascade": "all, delete"})
+    # дисциплины, в которых участвует студент
+    enrolled_disciplines: List["Discipline"] = Relationship(
+        back_populates="students",
+        link_model=StudentDiscipline,
+        sa_relationship_kwargs={"passive_deletes": True}
+    )
     works: List["Work"] = Relationship(
         back_populates="students",
         link_model=UserWork,
@@ -127,6 +139,12 @@ class Discipline(SQLModel, table=True):
     teacher_id: int = Field(sa_column=Column(ForeignKey("user.id", ondelete="CASCADE")))
 
     teacher: Optional["User"] = Relationship(back_populates="disciplines")
+    # студенты, записанные на дисциплину
+    students: List[User] = Relationship(
+        back_populates="enrolled_disciplines",
+        link_model=StudentDiscipline,
+        sa_relationship_kwargs={"passive_deletes": True}
+    )
     documents: List["Document"] = Relationship(back_populates="discipline", sa_relationship_kwargs={"passive_deletes": True})
     works: List["Work"] = Relationship(back_populates="discipline", sa_relationship_kwargs={"passive_deletes": True})
 

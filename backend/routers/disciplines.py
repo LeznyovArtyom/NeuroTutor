@@ -4,7 +4,7 @@ from typing import Annotated, Optional, List
 from pydantic import BaseModel
 from sqlmodel import Session, select
 from database import get_session
-from models import User as UserModel, Discipline as DisciplineModel, Document as DocumentModel, TeacherStudent as TeacherStudentModel, UserWork as UserWorkModel, Work as WorkModel
+from models import User as UserModel, Discipline as DisciplineModel, Document as DocumentModel, TeacherStudent as TeacherStudentModel, UserWork as UserWorkModel, Work as WorkModel, StudentDiscipline as StudentDisciplineModel
 import base64
 from core.security import oauth2_scheme, decode_access_token
 
@@ -25,6 +25,10 @@ class Discipline(BaseModel):
 class DisciplineUpdate(BaseModel):
     name: Optional[str] = None
     documents: Optional[List[Document]] = None
+
+
+class AddStudentsToDiscipline(BaseModel):
+    ids: list[int]
     
 
 # Получить дисциплины
@@ -162,6 +166,20 @@ async def get_discipline_info(discipline_id: int, token: Annotated[str, Depends(
             } for work, status in rows
         ]
 
+    # Шаг 4: собираем список студентов, назначенных на эту дисциплину (только для teacher)
+    students_data = None
+    if user.role == "teacher":
+        # получаем всех User, у которых есть запись в student_discipline
+        rows = session.exec(
+            select(UserModel)
+            .join(StudentDisciplineModel, StudentDisciplineModel.student_id == UserModel.id)
+            .where(StudentDisciplineModel.discipline_id == discipline_id)
+        ).all()
+        students_data = [
+            {"id": s.id, "last_name": s.last_name, "first_name": s.first_name, "login": s.login}
+            for s in rows
+        ]
+
     return JSONResponse({"Discipline": {
         "id": discipline.id,
         "name": discipline.name,
@@ -173,7 +191,8 @@ async def get_discipline_info(discipline_id: int, token: Annotated[str, Depends(
                 "data": base64.b64encode(document.data).decode()
             } for document in discipline.documents
         ],
-        "works": works_data
+        "works": works_data,
+        "students": students_data
     }}, status_code=200)
 
 
@@ -269,4 +288,81 @@ async def delete_document_from_discipline(discipline_id: int, document_id: int, 
     session.delete(document)
     session.commit()
 
-    return JSONResponse({"message": "Документ успещно удален из дисциплины"}, status_code=200)
+    return JSONResponse({"message": "Документ успешно удален из дисциплины"}, status_code=200)
+
+
+# Добавить студентов в дисциплину
+@router.post("/disciplines/{discipline_id}/students/add", summary="Добавить студентов в дисциплину", tags=["Дисциплины"])
+async def add_students_to_discipline(discipline_id: int, studentsIds: AddStudentsToDiscipline, token: Annotated[str, Depends(oauth2_scheme)], session: Session = Depends(get_session)):
+    """
+    Добавляет студентов в дисциплину.
+    Требуется авторизация с использованием токена доступа.
+
+    Поля для обновления дисциплины:
+    - **studentsIds**: Список ID студентов
+
+    Параметры пути:
+    - **discipline_id**: ID дисциплины
+    """
+    user_login = decode_access_token(token)
+    user = session.exec(select(UserModel).where(UserModel.login == user_login)).first()
+    if not user:
+        raise HTTPException(404, detail="Пользователь не найден")
+    
+    # Проверяем что пользователь - преподаватель и владелец дисциплины
+    if user.role != "teacher":
+        raise HTTPException(403, detail="Недостаточно прав")
+    discipline = session.exec(select(DisciplineModel).where(DisciplineModel.id == discipline_id, DisciplineModel.teacher_id == user.id)).first()
+
+    if not discipline:
+        raise HTTPException(404, detail="Дисциплина не найдена")
+
+    # Добавляем студентов в дисциплину
+    for student_id in studentsIds.ids:
+        # проверяем, что этот студент привязан к преподавателю
+        ts = session.exec(select(TeacherStudentModel).where(TeacherStudentModel.teacher_id == user.id,TeacherStudentModel.student_id == student_id)).first()
+        if not ts:
+            continue  # либо raise, либо пропускаем
+
+        # создаём привязку, если ещё нет
+        existing = session.exec(select(StudentDisciplineModel).where(StudentDisciplineModel.discipline_id == discipline_id,StudentDisciplineModel.student_id == student_id)).first()
+        if not existing:
+            sd = StudentDisciplineModel(discipline_id=discipline_id,student_id=student_id)
+            session.add(sd)
+
+    session.commit()
+    return JSONResponse({"message": "Студенты добавлены в дисциплину"}, status_code=200)
+
+
+# Удалить студента из дисциплины
+@router.delete("/disciplines/{discipline_id}/students/{student_id}/remove", summary="Убрать студента из дисциплины", tags=["Дисциплины"])
+async def remove_student_from_discipline(discipline_id: int, student_id: int, token: Annotated[str, Depends(oauth2_scheme)], session: Session = Depends(get_session)):
+    """
+    Удаляет студента из дисциплины.
+    Требуется авторизация с использованием токена доступа.
+
+    Параметры пути:
+    - **discipline_id**: ID дисциплины
+    - **student_id**: ID студента
+    """
+    user_login = decode_access_token(token)
+    user = session.exec(select(UserModel).where(UserModel.login == user_login)).first()
+    if not user:
+        raise HTTPException(404, detail="Пользователь не найден")
+    
+    # Проверяем что пользователь - преподаватель и владелец дисциплины
+    if user.role != "teacher":
+        raise HTTPException(403, detail="Недостаточно прав")
+    discipline = session.exec(select(DisciplineModel).where(DisciplineModel.id == discipline_id, DisciplineModel.teacher_id == user.id)).first()
+
+    if not discipline:
+        raise HTTPException(404, detail="Дисциплина не найдена")
+
+    student_discipline = session.exec(select(StudentDisciplineModel).where(StudentDisciplineModel.discipline_id == discipline_id, StudentDisciplineModel.student_id == student_id)).first()
+    if not student_discipline:
+        raise HTTPException(status_code=404, detail="Студент не найден в этой дисциплине")
+        
+    session.delete(student_discipline)
+    session.commit()
+    
+    return JSONResponse({"message": "Студент удалён из дисциплины"}, status_code=200)

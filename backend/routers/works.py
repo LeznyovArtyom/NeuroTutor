@@ -4,7 +4,7 @@ from typing import Annotated
 from pydantic import BaseModel
 from sqlmodel import Session, select, update
 from database import get_session
-from models import User as UserModel, Discipline as DisciplineModel, Work as WorkModel, UserWork as UserWorkModel
+from models import User as UserModel, Discipline as DisciplineModel, Work as WorkModel, UserWork as UserWorkModel, StudentDiscipline as StudentDisciplineModel
 from core.security import oauth2_scheme, decode_access_token
 
 
@@ -278,15 +278,25 @@ async def add_students_to_work(discipline_id: int, work_id: int, studentsIds: Ad
     work = session.exec(select(WorkModel).where(WorkModel.id == work_id, WorkModel.discipline_id == discipline_id)).first()
     if not work:
         raise HTTPException(status_code=404, detail="Работа не найдена")
+    
+    # Загружаем всех студентов, записанных на дисциплину
+    allowed_student_ids = { student_discipline.student_id for student_discipline in session.exec(select(StudentDisciplineModel).where(StudentDisciplineModel.discipline_id == discipline_id)) }
 
     # Добавляем студентов в работу
     for student_id in studentsIds.ids:
+        # Проверяем, что студент записан на дисциплину
+        if student_id not in allowed_student_ids:
+            raise HTTPException(
+                status_code=400,
+                detail=f"Нельзя добавить пользователя {student_id} — он не записан на эту дисциплину"
+            )
+        
         # Проверяем, что студент существует
         student = session.exec(select(UserModel).where(UserModel.id == student_id)).first()
         if not student:
             raise HTTPException(status_code=404, detail=f"Студент с ID {student_id} не найден")
 
-        # Проверяем, что связь студент-работа еще не существует
+        # Проверяем, что связь студент-работа еще не создана
         existing_relation = session.exec(select(UserWorkModel).where(UserWorkModel.student_id == student_id, UserWorkModel.work_id == work_id)).first()
         if not existing_relation:
             new_user_work = UserWorkModel(student_id=student_id, work_id=work_id)
