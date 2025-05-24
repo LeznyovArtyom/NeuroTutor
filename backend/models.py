@@ -1,5 +1,4 @@
 from sqlmodel import SQLModel, Field, Relationship, Column, ForeignKey, Text
-from sqlalchemy import CheckConstraint, String
 from typing import Optional, List
 from datetime import datetime
 from sqlalchemy.dialects.mysql import LONGBLOB
@@ -10,12 +9,32 @@ from sqlalchemy import Enum as SQLEnum
 class UserRole(str, Enum):
     STUDENT = "student"
     TEACHER = "teacher"
-    ADMIN = "admin"
+    ADMIN   = "admin"
 
 
 class SenderType(str, Enum):
-    AI = "ai"
+    AI   = "ai"
     USER = "user"
+
+
+# Этапы сдачи работы
+class ChatStage(str, Enum):
+    NEW                     = "new"                       # чат только создан, работа не загружена
+    CHECKING_THE_WORK       = "checking_the_work"         # проверка загруженной работы
+    RETURNED_FOR_REVISION   = "returned_for_revision"     # возвращено на доработку
+    CHECKING_CORRECTED_WORK = "checking_corrected_work" # проверка исправленной работы
+    DIALOGUE                = "dialogue"                  # диалог в формате вопрос-ответ
+    REVIEW                  = "review"                    # статистика по ответам
+    FINISHED                = "finished"                  # работа зачтена / не зачтена
+
+
+# Статусы попытки сдачи работы студентом
+class WorkStatus(str, Enum):
+    NOT_STARTED = "Не начата"
+    NEED_FIX    = "На доработке"
+    IN_PROGRESS = "В процессе"
+    PASSED      = "Принята"
+    FAILED      = "Отклонена"
 
 
 class TeacherStudent(SQLModel, table=True):
@@ -28,7 +47,7 @@ class UserWork(SQLModel, table=True):
     __tablename__ = "user_work"
     student_id: Optional[int] = Field(sa_column=Column(ForeignKey("user.id", ondelete="CASCADE"), primary_key=True))
     work_id: Optional[int] = Field(sa_column=Column(ForeignKey("work.id", ondelete="CASCADE"), primary_key=True))
-    status: str = Field(max_length=20, default="Не начата")
+    status: WorkStatus = Field(default=WorkStatus.NOT_STARTED, sa_column=Column(SQLEnum(WorkStatus, name="work_status")))
 
 
 class User(SQLModel, table=True):
@@ -72,8 +91,13 @@ class Chat(SQLModel, table=True):
     id: Optional[int] = Field(primary_key=True)
     mode: str = Field(max_length=45)
     document_data: Optional[bytes] = Field(sa_column=Column(LONGBLOB()))
+    document_name: Optional[str] = Field(default=None, max_length=255)  # имя файла для определения расширения
     user_id: int = Field(sa_column=Column(ForeignKey("user.id", ondelete="CASCADE")))
     work_id: Optional[int] = Field(sa_column=Column(ForeignKey("work.id", ondelete="CASCADE")))
+    stage: ChatStage = Field(default=ChatStage.NEW, sa_column=Column(SQLEnum(ChatStage, name="chat_stage")))
+    meta: Optional[str] = Field(sa_column=Column(Text())) # JSON: qs, stats
+    current_q: int = Field(default=0)
+    score: float = Field(default=0.0)
 
     user: Optional[User] = Relationship(back_populates="chats")
     messages: List["Message"] = Relationship(back_populates="chat", sa_relationship_kwargs={"passive_deletes": True})

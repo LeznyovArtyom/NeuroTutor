@@ -9,7 +9,7 @@ from transformers import AutoModelForCausalLM, AutoTokenizer
 # Авторизация в HuggingFace
 # HF_TOKEN = os.getenv("HF_TOKEN")
 # if HF_TOKEN:
-login("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")
+login("...")
 
 
 BASE_MODEL_NAME = "google/gemma-3-1b-it"
@@ -79,3 +79,29 @@ def generate_once(prompt: str) -> str:
         )
 
     return tok.decode(out_ids[0], skip_special_tokens=True)
+
+
+
+
+# Обращение к модели Mistral по API
+from mistralai import Mistral
+
+
+MISTRAL_MODEL   = "mistral-small-latest"
+MAX_NEW_TOKENS  = 512
+TEMPERATURE     = 0.5
+TOP_P           = 0.9
+
+
+async def generate_once_mistral(prompt: str) -> str:
+    api_key = os.getenv("MISTRAL_API_KEY", "...")
+    client  = Mistral(api_key=api_key)
+
+    response = client.chat.complete(
+        model="mistral-small-latest",
+        messages=[
+            {"role": "user", "content": prompt}
+        ]
+    )
+    # Mistral возвращает сразу один choice
+    return response.choices[0].message.content.strip()
