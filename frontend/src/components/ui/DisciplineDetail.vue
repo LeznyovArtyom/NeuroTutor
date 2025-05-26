@@ -23,8 +23,8 @@
         <div class="title mb-2 mt-5">Загрузите документы</div>
         <input ref="documentInput" type="file" multiple class="add_documents form-control mt-3"
             @change="upload_new_documents">
-        <div class="title mb-2 mt-5">Загруженные документы</div>
-        <div class="documents d-flex gap-4 flex-wrap">
+        <div class="title mb-3 mt-5">Загруженные документы</div>
+        <div class="documents d-flex gap-4 documents-scroll">
             <div v-for="document in documents" :key="document.id"
                 class="d-flex flex-column align-items-center file-item">
                 <img src="@/assets/file_icon.svg" alt="Файл" width="100" />
@@ -643,6 +643,59 @@ export default defineComponent({
     text-overflow: ellipsis;
     flex: 0 0 auto;
 }
+
+/* горизонтальная лента документов */
+.documents-scroll{
+  flex-wrap: nowrap;  /* запрещаем перенос элементов */
+  overflow-x: auto;   /* включаем горизонтальный скролл */
+  overscroll-behavior-x: contain;
+  scroll-snap-type: x mandatory;
+
+  scrollbar-width: thin; /* FireFox */
+}
+.documents-scroll::-webkit-scrollbar{
+  height: 8px;
+}
+.documents-scroll::-webkit-scrollbar-thumb{
+  background: #c2c2c2;
+  border-radius: 4px;
+}
+
+/* карточка файла (желательно задать фиксированную минимальную ширину) */
+.file-item{
+  width: 130px;
+  flex: 0 0 auto;
+  /* для выравнивания «Удалить файл» внизу */
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+
+/* Подпись под иконкой */
+.file-item small{
+  /* фиксированная высота = 2 строки по 1.2 em + зазор */
+  min-height: calc(1.2em * 2);
+  max-height: calc(1.2em * 2);
+
+  text-align: center;
+  line-height: 1.2;
+  margin-top: .25rem;
+
+  /* обрезка до двух строк */
+  display: -webkit-box;
+  -webkit-line-clamp: 2;   /* количество строк */
+  line-clamp: 2;           /* стандартное свойство для совместимости */
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* Кнопка «удалить» всегда прижимается к низу карточки */
+.file-item .delete_file{
+  margin-top: auto;
+  font-size: 1rem;
+}
+
 
 .table-fixed {
     /* фиксируем раскладку таблицы */
