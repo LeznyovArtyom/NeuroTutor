@@ -618,7 +618,9 @@ export default defineComponent({
     created() {
         /* первая загрузка при открытии */
         this.get_discipline_info();
-        this.fetch_teacher_students();
+        if (this.user?.role === 'teacher') {
+            this.fetch_teacher_students();
+        }
     },
     watch: {
         /* вызываем при каждом изменении :id (переход на другую дисциплину) */
