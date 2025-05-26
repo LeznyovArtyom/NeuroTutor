@@ -30,7 +30,7 @@
             <div v-if="message.sender === 'user'" class="user_message rounded-4 py-2 px-3"
                 style="background-color: #efefef; max-width: 70%;">
                 <div class="user_name mb-2" style="color: #6c6c6c; text-align: left;">You</div>
-                <div class="user_text" style="text-align: right;">{{ message.context }}</div>
+                <div class="user_text" style="text-align: left;">{{ message.context }}</div>
             </div>
             <div v-else class="ai_message py-2 px-3" style=" max-width: 100%;">
                 <div class="ai_name mb-2" style="color: #6c6c6c;">NeuroTutor</div>
@@ -38,11 +38,15 @@
             </div>
         </div>
     </div>
-    <div class="write-message d-flex align-items-center p-3 rounded-5 mt-auto">
-        <input type="text" :placeholder="chatStage === 'new' ? 'Сначала загрузите файл' : 'Напишите ответ'"
-            class="form-control border-0 bg-transparent shadow-none" v-model="inputText" @keydown.enter="sendMessage">
-        <button class="send_button btn rounded-5 ms-3" :disabled="sending || !inputText.trim() || chatStage === 'new'"
-            @click="sendMessage">
+    <div class="write-message d-flex align-items-center p-3 rounded-4 mt-auto">
+        <textarea type="text" :placeholder="chatStage === 'new' ? 'Сначала загрузите файл' : 'Напишите ответ'" rows="1"
+            :disabled="sending || chatStage === 'new' || chatStage === 'returned_for_revision'"
+            class="flex-grow-1 form-control border-0 bg-transparent shadow-none resize-none" v-model="inputText"
+            @keydown.enter.exact.prevent="sendMessage" @input="autoResize" ref="textarea"></textarea>
+        <button class="btn send_button rounded-circle ms-3 mt-auto"
+            :disabled="sending || !inputText.trim() || chatStage === 'new' || chatStage === 'returned_for_revision'"
+            @click="sendMessage"
+            title="Ответить">
             <img src="@/assets/arrow.svg" alt="Отправить" width="15" />
         </button>
     </div>
@@ -180,7 +184,7 @@ export default defineComponent({
         },
         // Отправить сообщение
         async sendMessage() {
-            if (this.chatStage === 'new') {
+            if (this.chatStage === 'new' || this.chatStage === 'returned_for_revision') {
                 alert('Сначала прикрепите файл работы');
                 return;
             }
@@ -198,11 +202,11 @@ export default defineComponent({
                 created_at: new Date()
             }) - 1;
 
-            // временная заглушка «Думаю…»
+            // временная заглушка «Печатает…»
             const aiIndex = this.messages.push({
                 id: Date.now() + 1,
                 sender: 'ai',
-                context: 'Думаю…',
+                context: 'Печатает…',
                 created_at: new Date()
             }) - 1;
             await this.$nextTick();
@@ -217,6 +221,7 @@ export default defineComponent({
 
             this.messages[userIndex] = response.data.user_message;
             this.messages[aiIndex] = response.data.ai_message;
+            this.chatStage = response.data.chat.stage;
             await this.$nextTick();
             this.scrollToEnd();
 
@@ -230,7 +235,13 @@ export default defineComponent({
         scrollToEnd() {
             const cont = this.$refs.scrollContainer as HTMLElement | undefined;
             if (cont) cont.scrollTop = cont.scrollHeight;
-        }
+        },
+        /* авто-рост textarea */
+        autoResize(e: Event) {
+            const el = e.target as HTMLTextAreaElement
+            el.style.height = 'auto'
+            el.style.height = Math.min(el.scrollHeight, 240) + 'px' // макс 6 строк
+        },
     },
     async mounted() {
         await this.fetchOrCreateChat();
@@ -257,12 +268,27 @@ export default defineComponent({
     background-color: #ececec;
 }
 
-.write-message {
-    background-color: #efefef;
-    height: 62px;
-}
-
 .send_button {
     background-color: #d9d9d9
+}
+
+.write-message {
+    background: #f4f4f4;
+    transition: opacity .2s;
+}
+
+.write-message.disabled {
+    opacity: .6;
+    pointer-events: none
+}
+
+textarea.resize-none {
+    min-height: 36px;
+    max-height: 240px; /* = 10 строк */
+    resize: none;
+    overflow-y: auto;
+    background: transparent;
+    scrollbar-color: rgba(0, 0, 0, 0.5) transparent;
+    scrollbar-width: thin;
 }
 </style>
