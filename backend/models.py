@@ -1,4 +1,4 @@
-from sqlmodel import SQLModel, Field, Relationship, Column, ForeignKey, Text
+from sqlmodel import SQLModel, Field, Relationship, Column, ForeignKey, Text, ForeignKeyConstraint
 from typing import Optional, List
 from datetime import datetime
 from sqlalchemy.dialects.mysql import LONGBLOB
@@ -19,16 +19,16 @@ class SenderType(str, Enum):
 
 # Этапы сдачи работы
 class ChatStage(str, Enum):
-    NEW                     = "new"                       # чат только создан, работа не загружена
-    CHECKING_THE_WORK       = "checking_the_work"         # проверка загруженной работы
-    RETURNED_FOR_REVISION   = "returned_for_revision"     # возвращено на доработку
-    CHECKING_CORRECTED_WORK = "checking_corrected_work" # проверка исправленной работы
-    DIALOGUE                = "dialogue"                  # диалог в формате вопрос-ответ
-    REVIEW                  = "review"                    # статистика по ответам
-    FINISHED                = "finished"                  # работа зачтена / не зачтена
+    NEW                     = "new"                      # чат только создан, работа не загружена
+    CHECKING_THE_WORK       = "checking_the_work"        # проверка загруженной работы
+    RETURNED_FOR_REVISION   = "returned_for_revision"    # возвращено на доработку
+    CHECKING_CORRECTED_WORK = "checking_corrected_work"  # проверка исправленной работы
+    DIALOGUE                = "dialogue"                 # диалог в формате вопрос-ответ
+    REVIEW                  = "review"                   # статистика по ответам
+    FINISHED                = "finished"                 # работа зачтена / не зачтена
 
 
-# Статусы попытки сдачи работы студентом
+# Статусы сдачи работы студентом
 class WorkStatus(str, Enum):
     NOT_STARTED = "Не начата"
     NEED_FIX    = "На доработке"
@@ -54,6 +54,14 @@ class UserWork(SQLModel, table=True):
     student_id: Optional[int] = Field(sa_column=Column(ForeignKey("user.id", ondelete="CASCADE"), primary_key=True))
     work_id: Optional[int] = Field(sa_column=Column(ForeignKey("work.id", ondelete="CASCADE"), primary_key=True))
     status: WorkStatus = Field(default=WorkStatus.NOT_STARTED, sa_column=Column(SQLEnum(WorkStatus, name="work_status")))
+
+    chats: List["Chat"] = Relationship(
+        back_populates="user_work",
+        sa_relationship_kwargs={
+            "cascade": "all, delete-orphan",  # удаляем сообщения из сессии
+            "passive_deletes": True           # и позволяем СУБД самой каскадить
+        }
+    )
 
 
 class User(SQLModel, table=True):
@@ -111,6 +119,16 @@ class Chat(SQLModel, table=True):
     current_q: int = Field(default=0)
     score: float = Field(default=0.0)
 
+    # Удаление чата при удалении записи из user_work
+    __table_args__ = (
+        ForeignKeyConstraint(
+            ["user_id", "work_id"],
+            ["user_work.student_id", "user_work.work_id"],
+            ondelete="CASCADE",
+        ),
+    )
+
+    user_work: Optional[UserWork] = Relationship(back_populates="chats")
     user: Optional[User] = Relationship(back_populates="chats")
     messages: List["Message"] = Relationship(back_populates="chat", sa_relationship_kwargs={"passive_deletes": True})
     work: Optional["Work"] = Relationship(back_populates="chats")
