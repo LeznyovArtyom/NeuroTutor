@@ -45,8 +45,7 @@
             @keydown.enter.exact.prevent="sendMessage" @input="autoResize" ref="textarea"></textarea>
         <button class="btn send_button rounded-circle ms-3 mt-auto"
             :disabled="sending || !inputText.trim() || chatStage === 'new' || chatStage === 'returned_for_revision'"
-            @click="sendMessage"
-            title="Ответить">
+            @click="sendMessage" title="Ответить">
             <img src="@/assets/arrow.svg" alt="Отправить" width="15" />
         </button>
     </div>
@@ -194,6 +193,12 @@ export default defineComponent({
             this.inputText = '';
             this.sending = true;
 
+            // Сбрасываем высоту textarea
+            const textarea = this.$refs.textarea as HTMLTextAreaElement | undefined;
+            if (textarea) {
+                textarea.style.height = 'auto';
+            }
+
             // мгновенно показываем своё сообщение
             const userIndex = this.messages.push({
                 id: Date.now(),
@@ -284,7 +289,8 @@ export default defineComponent({
 
 textarea.resize-none {
     min-height: 36px;
-    max-height: 240px; /* = 10 строк */
+    max-height: 240px;
+    /* = 10 строк */
     resize: none;
     overflow-y: auto;
     background: transparent;
