@@ -1,15 +1,14 @@
 from fastapi import APIRouter, HTTPException, Depends, Query, BackgroundTasks, UploadFile, File
 from fastapi.responses import JSONResponse
-from fastapi.concurrency import run_in_threadpool
 from typing import Annotated
 from pydantic import BaseModel
 from sqlmodel import Session, select
 from database import get_session
-from models import User as UserModel, Chat as ChatModel, Message as MessageModel, UserWork as UserWorkModel, ChatStage
+from models import User as UserModel, Chat as ChatModel, Message as MessageModel, UserWork as UserWorkModel, ChatStage, WorkStatus
 from core.security import oauth2_scheme, decode_access_token
 from model_utils import generate_once
 from model_utils import generate_once_mistral
-from assistant_core import handle_checking_the_work_stage, handle_checking_the_corrected_work_stage
+from assistant_core import handle_checking_the_work_stage, handle_checking_the_corrected_work_stage, dialogue, set_user_work_status
 
 
 router = APIRouter()
@@ -78,9 +77,7 @@ async def add_message_and_generate_answer(chat_id: int, message_data: Message, t
     - **chat_id**: ID чата, в который добавляется сообщение
     """
     user_login = decode_access_token(token)
-
     user = session.exec(select(UserModel).where(UserModel.login == user_login)).first()
-
     if not user:
         raise HTTPException(status_code=404, detail="Пользователь не найден")
     
@@ -98,9 +95,8 @@ async def add_message_and_generate_answer(chat_id: int, message_data: Message, t
     else:
         user_message = None
 
-    # Генерируем ответ 
-    # ai_text: str = await run_in_threadpool(generate_once, message_data.text)
-    ai_text = await generate_once_mistral(message_data.text)
+    # Проверяем ответ студента и составляем статистику
+    ai_text = await dialogue(chat, message_data.text, session)
 
     # Сохраняем ответ модели
     ai_message = MessageModel(chat_id=chat_id, sender="ai", text=ai_text)
@@ -120,6 +116,9 @@ async def add_message_and_generate_answer(chat_id: int, message_data: Message, t
             "sender": "ai",
             "context": ai_message.text,
             "created_at": ai_message.created_at.isoformat()
+        },
+        "chat": {
+            "stage": chat.stage
         }
     }, status_code=200)
 
@@ -152,6 +151,8 @@ async def upload_work(chat_id: int, token: Annotated[str, Depends(oauth2_scheme)
     session.add(chat); 
     session.commit(); 
     session.refresh(chat)
+
+    set_user_work_status(chat, session, WorkStatus.IN_PROGRESS)
 
     if chat.stage == ChatStage.CHECKING_THE_WORK:
         # запускаем проверку работы

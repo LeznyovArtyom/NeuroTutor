@@ -1,8 +1,6 @@
-from typing import List
-from nltk.metrics import edit_distance
-import json, re, os, asyncio
-from models import Chat as ChatModel, ChatStage, Work as WorkModel
-from sqlmodel import Session
+import json, re
+from models import Chat as ChatModel, ChatStage, Work as WorkModel, UserWork as UserWorkModel, WorkStatus
+from sqlmodel import Session, select
 import PyPDF2
 import docx # python-docx
 from pathlib import Path
@@ -33,68 +31,21 @@ def extract_text(file_data: bytes, filename: str) -> str:
     return cleaned.strip()
 
 
-# Один шаг проверки работы цифрового помощника
-async def next_turn(chat: ChatModel, user_message: str | None, session: Session) -> str:
+# Обновление статуса сдачи работы студентом
+def set_user_work_status(chat: ChatModel, session: Session, new_status: WorkStatus) -> None:
     """
-    Выполняет один шаг проверки работы:
-    - На этапе UPLOAD: формирует промпт для LLM, содержащий текст отчёта и ожидаемое задание,
-      получает от модели JSON-оценку, парсит её и возвращает соответствующий ответ.
-    - Далее: как раньше, вопрос-ответ.
+    Обновляет статус сдачи *для конкретного студента и работы*,
+    к которой привязан чат.
     """
-    # 0. Чат создан, работа не загружена
-    if chat.stage == ChatStage.NEW:
-        return "Пожалуйста, загрузите файл с работой, чтобы я мог приступить к проверке."
-    
-    # 2. Попросить загрузить исправленную работу
-    if chat.stage == ChatStage.RETURNED_FOR_REVISION:
-        return "Вашу работу вернули на доработку. Пожалуйста, загрузите исправленную версию."
-
-
-    
-
-    # ---------- 2. диалог DIALOGUE ----------
-    if chat.stage == ChatStage.DIALOGUE:
-        meta = json.loads(chat.meta)
-        qinfo = meta["qs"][chat.current_q]
-        score = grade(user_message, qinfo["a"])
-        chat.score += score
-        correct = score > 0.8
-
-        if correct:
-            feedback = "Верно! ✅"
-            chat.current_q += 1
-        else:
-            # уточняем / переспрашиваем
-            if score > 0.4:
-                feedback = "Почти! Попробуйте уточнить 🤔"
-                session.add(chat); session.commit()
-                return feedback          # задаём тот же вопрос ещё раз
-            feedback = f"Неверно. Правильный ответ: {qinfo['a']}"
-
-        # все вопросы закончились?
-        if chat.current_q == len(meta["qs"]):
-            chat.stage = ChatStage.REVIEW
-        else:
-            # при необходимости повышаем сложность
-            nxt = meta["qs"][chat.current_q]
-            feedback += f"\n\nВопрос {chat.current_q+1}: {nxt['q']}"
-
-        session.add(chat); session.commit()
-        return feedback
-
-    # ---------- 3. формирование статистики ----------
-    if chat.stage == ChatStage.REVIEW:
-        n = len(json.loads(chat.meta)["qs"])
-        result = chat.score / n
-        chat.stage = ChatStage.FINISHED
-        session.add(chat); session.commit()
-        if result >= 0.8:
-            return f"Работа зачтена («{result*100:.0f}%»)! 🎉"
-        return (f"Работа не зачтена ({result*100:.0f}%). "
-                "Советую повторить тему X и Y.")
-
-    # ---------- 4. всё кончилось ----------
-    return "Сессия завершена. Создайте новый чат, если нужны вопросы."
+    user_work = session.exec(
+        select(UserWorkModel)
+        .where(UserWorkModel.student_id == chat.user_id,
+               UserWorkModel.work_id    == chat.work_id)
+    ).first()
+    if user_work and user_work.status != new_status:
+        user_work.status = new_status
+        session.add(user_work)
+        session.commit()
 
 
 # 1. проверка работы
@@ -154,20 +105,34 @@ async def handle_checking_the_work_stage(chat: ChatModel, session: Session) -> s
         if missing:
             message += "\n\nНедоработки:" + "\n" + "\n".join(f"- {item}" for item in missing)
         chat.stage = ChatStage.RETURNED_FOR_REVISION
+        set_user_work_status(chat, session, WorkStatus.NEED_FIX)
         session.add(chat)
         session.commit()
         return message
     
+    # Работа корректна - нужно начать dualogue
+    # Просим модель сгенерировать один стартовый вопрос
+    sys = (
+        "Ты — цифровой преподаватель. "
+        "На основе отчёта сформируй ОДИН простой контрольный вопрос "
+        "и выпиши список ключевых тем (3-7 пунктов, в терминах предмета). "
+        "Верни JSON: {question, answer, topics:[...]}"
+    )
+    raw = await generate_once_mistral(sys + "\n\n" + file_text)
+    data = json.loads(re.search(r"\{.*\}", raw, re.S).group(0))
 
-
-    # Если работа правильная
-    questions = result.get('questions', [])
-    chat.meta = json.dumps({'status': 'ok', 'feedback': feedback, 'questions': questions})
+    chat.meta = json.dumps({
+        "task": expected_task,
+        "topics": data["topics"],
+        "stats": {"asked": 0, "correct": 0},
+        "last_q": data["question"],
+        "last_a": data["answer"],
+    })
     chat.stage = ChatStage.DIALOGUE
-    chat.current_q = 0
-    session.add(chat); session.commit()
-    first_q = questions[0]['q'] if questions else 'Опишите, что вы сделали в работе.'
-    return f"✅ В работе нет недочетов ({feedback}). Начинаем самопроверку:\n\nВопрос 1: {first_q}"
+    session.add(chat)
+    session.commit()
+
+    return (f"✅ В работе нет недочётов ({feedback}). Переходим к опросу!\n\n Вопрос 1: {data['question']}")
 
 
 # 2. проверка исправленной работы
@@ -226,23 +191,124 @@ async def handle_checking_the_corrected_work_stage(chat: ChatModel, session: Ses
     if not fixed:
         # перезаписываем meta для следующей итерации
         chat.meta = json.dumps({
-            "original_excerpt": original_excerpt,
+            "original_excerpt": new_text, # Ложим текущую версию работы
             "missing": still_missing
         })
         chat.stage = ChatStage.RETURNED_FOR_REVISION
+        set_user_work_status(chat, session, WorkStatus.NEED_FIX)
         session.add(chat)
         session.commit()
         return "❌ Всё ещё есть недоработки:\n" + "\n".join(f"- {m}" for m in still_missing)
         
-    # если fixed==true — запустить Q&A
-    questions = result.get('questions', [])
-    chat.meta = json.dumps({ 
-        'status': 'ok', 
-        'feedback': result['feedback'], 
-        'questions': questions 
+    # Работа корректна - нужно начать dualogue
+    # Просим модель сгенерировать один стартовый вопрос
+    sys = (
+        "Ты — цифровой преподаватель. "
+        "На основе отчёта сформируй ОДИН простой контрольный вопрос "
+        "и выпиши список ключевых тем (3-7 пунктов, в терминах предмета). "
+        "Верни JSON: {question, answer, topics:[...]}"
+    )
+    raw = await generate_once_mistral(sys + "\n\n" + new_text)
+    data = json.loads(re.search(r"\{.*\}", raw, re.S).group(0))
+
+    chat.meta = json.dumps({
+        "task": expected_task,
+        "topics": data["topics"],
+        "stats": {"asked": 0, "correct": 0},
+        "last_q": data["question"],
+        "last_a": data["answer"],
     })
     chat.stage = ChatStage.DIALOGUE
-    chat.current_q = 0
     session.add(chat)
     session.commit()
-    return f"✅ Всё исправлено ({result['feedback']}). Начинаем самопроверку:\n\nВопрос 1: {questions[0]['q']}"
+    return f"✅ Всё исправлено ({result['feedback']}). Начинаем самопроверку:\n\nВопрос 1: {data['question']}"
+
+
+MAX_ATTEMPTS = 2          # сколько попыток давать на один вопрос
+SCORE_PARTIAL = 0.5       # балл за частично-верный ответ
+
+
+# 3. Диалог между помощником и студентом в формате вопрос-ответ
+async def dialogue(chat: ChatModel, user_message: str | None, session: Session) -> str:
+    # Подгружаем данные meta
+    meta = json.loads(chat.meta or "{}")
+    stats = meta["stats"]
+    tries  = meta.get("attempts", 0)  # сколько попыток по текущему вопросу
+
+    # ---------- 1. просим LLM оценить ответ ----------
+    sys_prompt = (
+        "Ты — цифровой преподаватель. "
+        "Оцени ответ студента на предыдущий вопрос и реши, "
+        "нужен ли уточняющий/наводящий вопрос.\n"
+        "Верни СТРОГО JSON вида:\n"
+        "{quality:'correct'|'partial'|'wrong', "
+        " feedback:str, "
+        " follow_up?:str  # если нужно уточнить}"
+    )
+    user_prompt = json.dumps({
+        "question"     : meta["last_q"],
+        "right_answer" : meta["last_a"],
+        "student_answer": user_message,
+        "tries_done"   : tries
+    }, ensure_ascii=False)
+    raw = await generate_once_mistral(sys_prompt + "\n\n" + user_prompt)
+    result = json.loads(re.search(r"\{.*\}", raw, re.S).group(0))
+
+    quality   = result["quality"] # correct | partial | wrong
+    feedback  = result["feedback"]
+    follow_up = result.get("follow_up", "")
+
+    # ---------- 2. решение: остаться на вопросе либо перейти к следующему ----------
+    #  а) ещё есть попытки и ответ не «correct»  ➜ остаёмся
+    if quality != "correct" and tries < MAX_ATTEMPTS:
+        meta["attempts"] = tries + 1
+        chat.meta = json.dumps(meta)
+        session.add(chat)
+        session.commit()
+        hint = follow_up or "Попробуйте уточнить свой ответ."
+        return f"{feedback}\n\n{hint}"
+
+    #  б) вопрос заканчивается (учтём статистику и баллы)
+    stats["asked"]   += 1
+    if quality == "correct":
+        stats["correct"] += 1
+    elif quality == "partial":
+        stats["correct"] += SCORE_PARTIAL
+
+    meta["attempts"] = 0  # обнуляем попытки для следующего вопроса
+
+    # ---------- 3. остались ли ещё темы / вопросы ----------
+    topics_left = meta["topics"]
+    if not topics_left:
+        # Все темы спрашивали → подводим итог
+        chat.stage = ChatStage.FINISHED
+        passed = stats["correct"] / stats["asked"] >= 0.8
+        set_user_work_status(
+            chat, session,
+            WorkStatus.PASSED if passed else WorkStatus.FAILED
+        )
+        session.add(chat)
+        session.commit()
+        verdict = "Работа зачтена! 🎉" if passed else "Работа не зачтена."
+        return f"{feedback}\n\n{verdict}"
+    
+    # ---------- 4. генерируем следующий вопрос ----------
+    next_topic = topics_left.pop(0)
+    q_prompt = (
+        "Сформулируй один проверочный вопрос по теме: " + next_topic +
+        "\nВерни JSON: {q, a}"
+    )
+    qa_raw = await generate_once_mistral(q_prompt)
+    qa = json.loads(re.search(r"\{.*\}", qa_raw, re.S).group(0))
+
+    # Обновляем meta
+    meta.update({
+        "stats" : stats,
+        "last_q": qa["q"],
+        "last_a": qa["a"],
+        "topics": topics_left
+    })
+    chat.meta = json.dumps(meta)
+    session.add(chat); session.commit()
+
+    return f"{feedback}\n\nВопрос: {qa['q']}"
