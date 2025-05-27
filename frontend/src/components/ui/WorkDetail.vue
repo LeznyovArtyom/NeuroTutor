@@ -1,6 +1,6 @@
 <template>
     <div class="title mt-5">Задание</div>
-    <div class="mt-3">{{ work.task }}</div>
+    <div class="mt-3" v-html="convertMarkdown(work.task)"></div>
     <div class="d-flex align-items-center mt-5 gap-4">
         <div class="title text-nowrap">Номер работы</div>
         <div>{{ work.number }}</div>
@@ -143,6 +143,7 @@
 <script lang="ts">
 import { defineComponent } from 'vue';
 import axios from 'axios';
+import { marked } from 'marked'
 import debounce from 'lodash.debounce'
 import Cookies from 'js-cookie';
 import { useAuthStore } from '@/stores/auth'
@@ -183,6 +184,8 @@ export default defineComponent({
                 document_section: '',
                 status: ''
             },
+            // markdown для рендеринга задания работы
+            markdownConverter: marked,
 
             // Назначенные в работу в студенты
             assignedStudents: [] as Assigned[],
@@ -334,7 +337,11 @@ export default defineComponent({
                     console.error('Произошла ошибка при удалении студента из работы:', error);
                 }
             }
-        }
+        },
+        /* Конвертация текста в Markdown */
+        convertMarkdown(text: string) {
+            return this.markdownConverter.parse(text)
+        },
     },
     async mounted() {
         await Promise.all([
