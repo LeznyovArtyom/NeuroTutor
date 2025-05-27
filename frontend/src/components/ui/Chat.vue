@@ -30,7 +30,7 @@
             <div v-if="message.sender === 'user'" class="user_message rounded-4 py-2 px-3"
                 style="background-color: #efefef; max-width: 70%;">
                 <div class="user_name mb-2" style="color: #6c6c6c; text-align: left;">You</div>
-                <div class="user_text" style="text-align: left;">{{ message.context }}</div>
+                <div class="user_text" style="text-align: left; white-space: pre-wrap;">{{ message.context }}</div>
             </div>
             <div v-else class="ai_message py-2 px-3" style=" max-width: 100%;">
                 <div class="ai_name mb-2" style="color: #6c6c6c;">NeuroTutor</div>
