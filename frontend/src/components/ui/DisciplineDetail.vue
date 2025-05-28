@@ -646,57 +646,57 @@ export default defineComponent({
 
 /* горизонтальная лента документов */
 .documents-scroll{
-  flex-wrap: nowrap;  /* запрещаем перенос элементов */
-  overflow-x: auto;   /* включаем горизонтальный скролл */
-  overscroll-behavior-x: contain;
-  scroll-snap-type: x mandatory;
+    flex-wrap: nowrap;  /* запрещаем перенос элементов */
+    overflow-x: auto;   /* включаем горизонтальный скролл */
+    overscroll-behavior-x: contain;
+    scroll-snap-type: x mandatory;
 
-  scrollbar-width: thin;
+    scrollbar-width: thin;
 
-  flex: 0 0 auto; /* Предотвращаем сужение по вертикали */
+    flex: 0 0 auto; /* Предотвращаем сужение по вертикали */
 
-  padding-bottom: .4rem;
-  box-sizing: content-box;
+    padding-bottom: .4rem;
+    box-sizing: content-box;
 }
 .documents-scroll::-webkit-scrollbar-thumb{
-  background: #c2c2c2;
-  border-radius: 4px;
+    background: #c2c2c2;
+    border-radius: 4px;
 }
 
 /* карточка файла (желательно задать фиксированную минимальную ширину) */
-.file-item{
-  width: 130px;
-  flex: 0 0 auto;
-  /* для выравнивания «Удалить файл» внизу */
-  display: flex;
-  flex-direction: column;
-  align-items: center;
+.file-item {
+    width: 130px;
+    flex: 0 0 auto;
+    /* для выравнивания «Удалить файл» внизу */
+    display: flex;
+    flex-direction: column;
+    align-items: center;
 }
 
 /* Подпись под иконкой */
 .file-item small{
-  /* фиксированная высота = 2 строки по 1.2 em + зазор */
-  min-height: calc(1.2em * 2);
-  max-height: calc(1.2em * 2);
+    /* фиксированная высота = 2 строки по 1.2 em + зазор */
+    min-height: calc(1.2em * 2);
+    max-height: calc(1.2em * 2);
 
-  text-align: center;
-  line-height: 1.2;
-  margin-top: .25rem;
+    text-align: center;
+    line-height: 1.2;
+    margin-top: .25rem;
 
-  /* обрезка до двух строк */
-  display: -webkit-box;
-  -webkit-line-clamp: 2;   /* количество строк */
-  line-clamp: 2;           /* стандартное свойство для совместимости */
-  -webkit-box-orient: vertical;
-  overflow: hidden;
-  text-overflow: ellipsis;
+    /* обрезка до двух строк */
+    display: -webkit-box;
+    -webkit-line-clamp: 2;   /* количество строк */
+    line-clamp: 2;           /* стандартное свойство для совместимости */
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+    text-overflow: ellipsis;
 }
 
 /* Кнопка «удалить» всегда прижимается к низу карточки */
 .file-item .delete_file{
-  margin-top: auto;
-  font-size: 1rem;
-  font-size: 0.9rem;
+    margin-top: auto;
+    font-size: 1rem;
+    font-size: 0.9rem;
 }
 
 
