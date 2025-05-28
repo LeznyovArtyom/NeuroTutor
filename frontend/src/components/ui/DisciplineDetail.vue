@@ -651,10 +651,12 @@ export default defineComponent({
   overscroll-behavior-x: contain;
   scroll-snap-type: x mandatory;
 
-  scrollbar-width: thin; /* FireFox */
-}
-.documents-scroll::-webkit-scrollbar{
-  height: 8px;
+  scrollbar-width: thin;
+
+  flex: 0 0 auto; /* Предотвращаем сужение по вертикали */
+
+  padding-bottom: .4rem;
+  box-sizing: content-box;
 }
 .documents-scroll::-webkit-scrollbar-thumb{
   background: #c2c2c2;
@@ -694,6 +696,7 @@ export default defineComponent({
 .file-item .delete_file{
   margin-top: auto;
   font-size: 1rem;
+  font-size: 0.9rem;
 }
 
 
