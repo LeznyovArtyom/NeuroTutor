@@ -49,6 +49,12 @@ class StudentDiscipline(SQLModel, table=True):
     discipline_id: Optional[int] = Field(sa_column=Column(ForeignKey("discipline.id", ondelete="CASCADE"), primary_key=True))
 
 
+class WorkDocument(SQLModel, table=True):
+    __tablename__ = "work_document"
+    work_id: int = Field(foreign_key="work.id", primary_key=True)
+    document_id: int  = Field(foreign_key="document.id", primary_key=True)
+
+
 class UserWork(SQLModel, table=True):
     __tablename__ = "user_work"
     student_id: Optional[int] = Field(sa_column=Column(ForeignKey("user.id", ondelete="CASCADE"), primary_key=True))
@@ -175,7 +181,11 @@ class Document(SQLModel, table=True):
     discipline_id: int =  Field(sa_column=Column(ForeignKey("discipline.id", ondelete="CASCADE")))
 
     discipline: Optional[Discipline] = Relationship(back_populates="documents")
-    works: List["Work"] = Relationship(back_populates="document")
+    works: List["Work"] = Relationship(
+        back_populates="documents",
+        link_model=WorkDocument,
+        sa_relationship_kwargs={"lazy": "selectin", "cascade": "all, delete"}
+    )
 
 
 class Work(SQLModel, table=True):
@@ -184,12 +194,16 @@ class Work(SQLModel, table=True):
     name: str = Field(max_length=255)
     task: Optional[str] = Field(sa_column=Column(Text()))
     number: int = Field(nullable=False)
-    document_id: Optional[int] = Field(sa_column=Column(ForeignKey("document.id", ondelete="SET NULL")))
+    
     document_section: Optional[str] = Field(max_length=255)
     discipline_id: Optional[int] = Field(sa_column=Column(ForeignKey("discipline.id", ondelete="CASCADE")))
 
     discipline: Optional[Discipline] = Relationship(back_populates="works", sa_relationship_kwargs={"passive_deletes": True})
-    document: Optional[Document] = Relationship(back_populates="works")
+    documents: List[Document] = Relationship(
+        back_populates="works",
+        link_model=WorkDocument,
+        sa_relationship_kwargs={"lazy": "selectin", "cascade": "all, delete"}
+    )
     students: List["User"] = Relationship(
         back_populates="works",
         link_model=UserWork,

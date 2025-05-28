@@ -5,9 +5,14 @@
         <div class="title text-nowrap">Номер работы</div>
         <div>{{ work.number }}</div>
     </div>
-    <div class="d-flex align-items-center mt-3 gap-4">
-        <div class="title">Документ</div>
-        <div>{{ work.document }}</div>
+    <div class="d-flex align-items-center mt-3 gap-4 flex-wrap">
+        <div class="title mt-1">Документы</div>
+        <div class="doc-chips d-flex flex-wrap gap-2 flex-grow-1">
+            <span v-for="doc in work.documents" :key="doc.id" class="badge doc-chip text-dark bg-light border">
+                <i class="bi bi-file-earmark-text me-1"></i>{{ doc.name }}
+            </span>
+            <span v-if="!work.documents.length" class="text-muted">—</span>
+        </div>
     </div>
     <div class="d-flex align-items-center mt-3 gap-4">
         <div class="title">Раздел</div>
@@ -180,7 +185,7 @@ export default defineComponent({
                 name: '',
                 task: '',
                 number: 0,
-                document: '',
+                documents: [] as { id: number; name: string }[],
                 document_section: '',
                 status: ''
             },
@@ -218,7 +223,7 @@ export default defineComponent({
                 this.work.name = response.data.Work.name;
                 this.work.task = response.data.Work.task;
                 this.work.number = response.data.Work.number;
-                this.work.document = response.data.Work.document_name;
+                this.work.documents = response.data.Work.documents;
                 this.work.document_section = response.data.Work.document_section;
                 if (response.data.Work.status) {
                     this.work.status = response.data.Work.status;
@@ -383,5 +388,18 @@ export default defineComponent({
 
 .selectedStudents {
     background-color: #d74f37;
+}
+
+.doc-chip {
+    font-weight: 500;
+    line-height: 1.2;
+    padding: .35rem .55rem;
+    border-radius: .5rem;
+    background-color: #f5f5f5;
+    border: 1px solid #d7d7d7;
+}
+
+.doc-chip i {
+    font-size: 0.9em; /* иконка чуть меньше текста */
 }
 </style>

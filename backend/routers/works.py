@@ -2,9 +2,9 @@ from fastapi import APIRouter, HTTPException, Depends
 from fastapi.responses import JSONResponse
 from typing import Annotated
 from pydantic import BaseModel
-from sqlmodel import Session, select, update
+from sqlmodel import Session, select, update, delete
 from database import get_session
-from models import User as UserModel, Discipline as DisciplineModel, Work as WorkModel, UserWork as UserWorkModel, StudentDiscipline as StudentDisciplineModel
+from models import User as UserModel, Discipline as DisciplineModel, Work as WorkModel, UserWork as UserWorkModel, StudentDiscipline as StudentDisciplineModel, WorkDocument as WorkDocumentModel
 from core.security import oauth2_scheme, decode_access_token
 
 
@@ -15,15 +15,15 @@ class Work(BaseModel):
     name: str
     task: str
     number: int
-    document_id: int
-    document_section: str
+    document_ids: list[int] = []
+    document_section: str | None = None
 
 
 class WorkUpdate(BaseModel):
     name: str | None = None
     task: str | None = None
     number: int | None = None
-    document_id: int | None = None
+    document_ids: list[int] | None = None
     document_section: str | None = None
 
 
@@ -72,12 +72,15 @@ async def add_new_work_to_discipline(discipline_id: int, work_data: Work, token:
         name=work_data.name,
         task=work_data.task,
         number=work_data.number,
-        document_id=work_data.document_id,
         document_section=work_data.document_section,
         discipline_id=discipline_id
     )
-
     session.add(new_work)
+    session.commit()
+    session.refresh(new_work)
+
+    for doc_id in work_data.document_ids:
+        session.add(WorkDocumentModel(work_id=new_work.id, document_id=doc_id))
     session.commit()
 
     return JSONResponse({"message": "Работа успешно добавлена в дисциплину"}, status_code=201)
@@ -143,8 +146,13 @@ async def get_work_info(discipline_id: int, work_id: int, token: Annotated[str, 
         "name": work.name,
         "task": work.task,
         "number": work.number,
-        "document_id": work.document_id,
-        "document_name": work.document.name,
+        "document_ids": [d.id for d in work.documents],
+        "documents": [ 
+            {
+                "id": document.id, 
+                "name": document.name
+            } for document in work.documents 
+        ],
         "document_section": work.document_section,
         "students": [
             {
@@ -237,8 +245,12 @@ async def update_discipline(discipline_id: int, work_id: int, work_data: WorkUpd
 
         # Ставим новый номер текущей работы
         work.number = new_num
-    if work_data.document_id is not None:
-        work.document_id = work_data.document_id
+    if work_data.document_ids is not None:
+        # удаляем старые связи
+        session.exec(delete(WorkDocumentModel).where(WorkDocumentModel.work_id == work_id))
+        # добавляем новые
+        for doc_id in work_data.document_ids:
+            session.add(WorkDocumentModel(work_id=work_id, document_id=doc_id))
     if work_data.document_section is not None:
         work.document_section = work_data.document_section
 

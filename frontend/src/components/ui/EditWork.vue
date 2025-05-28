@@ -12,15 +12,32 @@
     </div>
     <div class="d-flex justify-content-between mt-5">
         <div class="document_container me-3">
-            <div class="title">Документ</div>
-            <select class="form-select select_document mt-3" v-model="work.document_id">
-                <option value=""></option>
-                <option v-for="document in documents" :value="document.id" :key="document.id">{{ document.name }}
-                </option>
-            </select>
+            <div class="title">Документы</div>
+            <div class="dropdown mt-3" data-bs-auto-close="outside">
+                <button class="btn btn-outline-secondary dropdown-toggle w-100 text-start" data-bs-toggle="dropdown"
+                    data-bs-display="static" data-bs-flip="false">
+                    {{ docsLabel }}
+                </button>
+
+                <div class="dropdown-menu documents_menu p-2" @click.stop ref="docsMenu">
+                    <label class="dropdown-item">
+                        <input type="checkbox" class="form-check-input me-2" :checked="isNone" @change="toggleNone">
+                        Без документов
+                    </label>
+
+                    <div class="dropdown-divider my-1"></div>
+
+                    <label v-for="document in documents" :key="document.id" class="dropdown-item">
+                        <input type="checkbox" class="form-check-input me-2" :value="document.id"
+                            v-model="work.document_ids" :checked="work.document_ids.includes(document.id)"
+                            @change="toggleDoc(document.id, $event)">
+                        {{ document.name }}
+                    </label>
+                </div>
+            </div>
         </div>
         <div class="section_container">
-            <div class="title">Раздел</div>
+            <div class="title">Раздел / Тема / Глава</div>
             <input type="text" class="form-control section_input mt-3" v-model="work.document_section">
         </div>
     </div>
@@ -57,14 +74,14 @@ export default defineComponent({
                 name: '',
                 task: '',
                 number: 0,
-                document_id: '',
+                document_ids: [] as number[],
                 document_section: ''
             },
             originalWork: {
                 name: '',
                 task: '',
                 number: 0,
-                document_id: '',
+                document_ids: [] as number[],
                 document_section: ''
             },
             documents: [] as Array<{ id: number; name: string }>,
@@ -72,11 +89,56 @@ export default defineComponent({
         }
     },
     computed: {
+        isNone(): boolean {
+            return this.work.document_ids.length === 0
+        },
+        docsLabel(): string {
+            if (this.isNone) return 'Без документов'
+            return `Выбрано: ${this.work.document_ids.length}`
+        },
         canSubmit(): boolean {
-            return this.work.name.trim().length > 0 && this.work.task.trim().length > 0 && this.work.number > 0 && this.work.document_id !== '' && this.work.document_section.trim().length > 0;
+            return this.work.name.trim().length > 0 &&
+                this.work.task.trim().length > 0 &&
+                this.work.number > 0
         }
     },
     methods: {
+        toggleNone(e: Event) {
+            if ((e.target as HTMLInputElement).checked) {
+                this.work.document_ids = []  // очищаем выбор документов
+            }
+        },
+        /* клик по документу */
+        toggleDoc(id: number, e: Event) {
+            const checked = (e.target as HTMLInputElement).checked
+            const arr = this.work.document_ids
+
+            if (checked) {  // добавить
+                if (!arr.includes(id)) arr.push(id)
+            } else {        // убрать
+                const idx = arr.indexOf(id)
+                if (idx !== -1) arr.splice(idx, 1)
+            }
+        },
+        // Гладкое колесо при прокрутке документов
+        initSmoothWheel() {
+            const box = this.$refs.docsMenu as HTMLElement | undefined
+            if (!box) return
+
+            const STEP = 32          // высота одной строки (px)
+            const MAX_DY = STEP * 3  // сколько максимум забираем за один event
+
+            box.addEventListener('wheel', e => {
+                e.preventDefault()
+
+                /* нормализуем колёсико */
+                let dy = Math.sign(e.deltaY) * STEP    // 1 клик = 1 строка
+                if (Math.abs(e.deltaY) > STEP)         // тач-пад / очень быстро
+                    dy = Math.sign(e.deltaY) * MAX_DY  // режем до 3 строк
+
+                box.scrollBy({ top: dy, left: 0, behavior: 'smooth' })
+            }, { passive: false })
+        },
         async get_work_info() {
             try {
                 const accessToken = Cookies.get('access_token');
@@ -88,8 +150,10 @@ export default defineComponent({
                 this.work.name = response.data.Work.name;
                 this.work.task = response.data.Work.task;
                 this.work.number = response.data.Work.number;
-                this.work.document_id = response.data.Work.document_id;
+                this.work.document_ids = response.data.Work.document_ids ?? response.data.Work.documents.map((d: {id:number}) => d.id);
                 this.work.document_section = response.data.Work.document_section;
+
+                this.documents = response.data.Work.documents;
 
                 this.originalWork = Object.assign({}, this.work);
 
@@ -127,7 +191,7 @@ export default defineComponent({
             try {
                 const accessToken = Cookies.get('access_token');
 
-                const updatedFields: { name?: string, task?: string, number?: number, document_id?: number, document_section?: string } = {};
+                const updatedFields: { name?: string, task?: string, number?: number, document_id?: number, document_ids?: number[], document_section?: string } = {};
                 if (this.originalWork.name !== this.work.name) {
                     updatedFields.name = this.work.name.trim();
                 }
@@ -137,8 +201,8 @@ export default defineComponent({
                 if (this.originalWork.number !== this.work.number) {
                     updatedFields.number = Number(this.work.number);
                 }
-                if (this.originalWork.document_id !== this.work.document_id) {
-                    updatedFields.document_id = Number(this.work.document_id);
+                if (JSON.stringify(this.originalWork.document_ids) !== JSON.stringify(this.work.document_ids)) {
+                    updatedFields.document_ids = this.work.document_ids.slice();
                 }
                 if (this.originalWork.document_section !== this.work.document_section) {
                     updatedFields.document_section = this.work.document_section.trim();
@@ -168,6 +232,7 @@ export default defineComponent({
     mounted() {
         this.get_work_info();
         this.get_discipline_info();
+        this.initSmoothWheel();
     }
 })
 </script>
@@ -180,6 +245,13 @@ export default defineComponent({
 .document_container {
     max-width: 350px;
     width: 100%;
+}
+
+.documents_menu {
+    min-width: 350px;
+    margin-top: 1px;
+    max-height: 155px;
+    overflow-y: auto;
 }
 
 .section_container {
