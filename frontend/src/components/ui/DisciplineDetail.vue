@@ -1,5 +1,5 @@
 <template>
-    <div class="d-flex justify-content-between mb-2 mt-5">
+    <div class="d-flex justify-content-between mb-2 mt-3">
         <div class="title">Дисциплина</div>
         <template v-if="user?.role === 'teacher'">
             <button v-if="!isEditing"
@@ -127,7 +127,7 @@
         </table>
     </template>
 
-    <div class="d-flex justify-content-end mt-auto" v-if="user?.role === 'teacher'">
+    <div class="d-flex justify-content-end mt-auto py-3" v-if="user?.role === 'teacher'">
         <button
             class="btn delete_discipline text-white rounded-3 d-flex align-items-center justify-content-center text-end"
             data-bs-toggle="modal" data-bs-target="#deleteDisciplineModal">Удалить дисциплину

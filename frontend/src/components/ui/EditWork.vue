@@ -1,5 +1,5 @@
 <template>
-    <div class="title mt-5">Название работы</div>
+    <div class="title mt-3">Название работы</div>
     <input class="form-control mt-3" v-model="work.name" />
     <div class="title mt-5">Задание</div>
     <textarea class="form-control mt-3" rows="20" v-model="work.task"></textarea>
@@ -41,7 +41,7 @@
             <input type="text" class="form-control section_input mt-3" v-model="work.document_section">
         </div>
     </div>
-    <div class="d-flex justify-content-end mt-auto">
+    <div class="d-flex justify-content-end mt-auto py-3">
         <router-link
             class="btn action_button cancel_button text-white rounded-3 d-flex align-items-center justify-content-center"
             :to="{ name: 'discipline-detail', params: { id: id } }">Отмена</router-link>

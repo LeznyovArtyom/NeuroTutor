@@ -1,6 +1,5 @@
 <template>
-    <div :class="['main_panel pt-4 d-flex flex-column', showPanel ? 'col-10 offset-2' : 'col-12']"
-        style="height: calc(100vh - 60px); position: relative;">
+    <div :class="['main_panel pt-4 d-flex flex-column', showPanel ? 'panel_open' : 'panel_closed']">
         <div class="header d-flex align-items-center"
             :style="{ left: showPanel ? '16.666666%' : '0', width: showPanel ? '83.333333%' : '100%' }">
             <button class="btn close_panel p-0" @click="$emit('togglePanel')">
@@ -11,9 +10,10 @@
                 {{ pageTitle }}
             </div>
         </div>
-        <div class="main_area px-5 d-flex flex-column flex-grow-1 chat_content mx-auto"
-            style="overflow-y: auto; padding-bottom: 62px; max-width: 1250px; width: 100%;">
-            <slot></slot>
+        <div class="main_area d-flex flex-column flex-grow-1 chat_content">
+            <div class="content_wrapper mx-auto">
+                <slot></slot>
+            </div>
         </div>
     </div>
 </template>
@@ -68,7 +68,31 @@ export default defineComponent({
 }
 
 .main_panel {
-    margin-top: 60px;
-    transition: margin-left 0.3s ease;
+  position: relative;
+  height: 100vh;
+  overflow: hidden; /* главная панель не скроллится */
+  transition: margin-left .3s ease;
+}
+.panel_open   { margin-left: 16.6666%; width: 83.3333%; }
+.panel_closed { margin-left: 0;         width: 100%;     }
+
+.main_area {
+  position: absolute;
+  top: 60px; bottom: 0; left: 0; right: 0;
+  overflow-y: auto;
+  overflow-x: hidden;
+}
+
+/* центр контента и ограничение по ширине */
+.content_wrapper {
+  max-width: 1250px;
+  width: 100%;
+  margin: 0 auto;
+  padding: 1rem;
+  box-sizing: border-box;
+
+  display:flex;
+  flex-direction:column;
+  min-height:100%;
 }
 </style>

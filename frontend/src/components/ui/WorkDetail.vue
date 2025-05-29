@@ -1,5 +1,5 @@
 <template>
-    <div class="title mt-5">Задание</div>
+    <div class="title mt-3">Задание</div>
     <div class="mt-3" v-html="convertMarkdown(work.task)"></div>
     <div class="d-flex align-items-center mt-5 gap-4">
         <div class="title text-nowrap">Номер работы</div>
@@ -133,7 +133,7 @@
         </div>
     </template>
 
-    <div class="d-flex justify-content-end mt-auto">
+    <div class="d-flex justify-content-end mt-auto py-3">
         <router-link
             class="btn action_button back_button text-white rounded-3 d-flex align-items-center justify-content-center"
             :to="{ name: 'discipline-detail', params: { id: id } }">Назад</router-link>

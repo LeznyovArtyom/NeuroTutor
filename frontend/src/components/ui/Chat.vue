@@ -1,53 +1,59 @@
 <template>
-    <!-- Загрузка документа для начала работы -->
-    <div class="loading_document" v-if="chatStage === 'new'">
-        <div class="my-3">Загрузите работу:</div>
-        <input type="file" class="form-control" ref="fileInput">
-        <button class="btn start_button text-white rounded-3 my-3 d-flex justify-content-center align-items-center"
-            :disabled="sending" @click="start_accepting_work">
-            Начать сдачу работы
-        </button>
-    </div>
-    <!-- Загрузка исправленного документа -->
-    <div class="loading_correct_document" v-if="chatStage === 'returned_for_revision'">
-        <div class="my-3">Загрузите исправленную работу:</div>
-        <input type="file" class="form-control" ref="fileInputCorrectWork">
-        <button class="btn continue_button text-white rounded-3 my-3 d-flex justify-content-center align-items-center"
-            :disabled="sending" @click="continue_accepting_work">
-            Продолжить сдачу работы
-        </button>
-    </div>
-    <div class="uploaded_document d-flex gap-3 my-3 rounded-2 p-2 w-auto align-self-start" v-if="chatStage !== 'new'">
-        <div>Загруженная работа:</div>
-        <div class="d-flex gap-1">
-            <i class="bi bi-file-earmark-text-fill"></i>
-            <div>{{ document_name }}</div>
+    <div class="mt-3">
+        <!-- Загрузка документа для начала работы -->
+        <div class="loading_document" v-if="chatStage === 'new'">
+            <div class="my-3">Загрузите работу:</div>
+            <input type="file" class="form-control" ref="fileInput">
+            <button class="btn start_button text-white rounded-3 my-3 d-flex justify-content-center align-items-center"
+                :disabled="sending" @click="start_accepting_work">
+                Начать сдачу работы
+            </button>
         </div>
-    </div>
-    <div ref="scrollContainer" class="messages_container flex-grow-1 overflow-auto mb-3">
-        <div v-for="message in messages" class="mb-2 w-100 d-flex"
-            :class="{ 'justify-content-end': message.sender === 'user', 'justify-content-start': message.sender === 'ai' }">
-            <div v-if="message.sender === 'user'" class="user_message rounded-4 py-2 px-3"
-                style="background-color: #efefef; max-width: 70%;">
-                <div class="user_name mb-2" style="color: #6c6c6c; text-align: left;">You</div>
-                <div class="user_text" style="text-align: left; white-space: pre-wrap;">{{ message.context }}</div>
-            </div>
-            <div v-else class="ai_message py-2 px-3" style=" max-width: 100%;">
-                <div class="ai_name mb-2" style="color: #6c6c6c;">NeuroTutor</div>
-                <div class="ai_text" v-html="convertMarkdown(message.context)"></div>
+        <!-- Загрузка исправленного документа -->
+        <div class="loading_correct_document" v-if="chatStage === 'returned_for_revision'">
+            <div class="my-3">Загрузите исправленную работу:</div>
+            <input type="file" class="form-control" ref="fileInputCorrectWork">
+            <button
+                class="btn continue_button text-white rounded-3 my-3 d-flex justify-content-center align-items-center"
+                :disabled="sending" @click="continue_accepting_work">
+                Продолжить сдачу работы
+            </button>
+        </div>
+        <div class="uploaded_document d-flex gap-3 my-3 rounded-2 p-2 w-auto align-self-start"
+            v-if="chatStage !== 'new'">
+            <div>Загруженная работа:</div>
+            <div class="d-flex gap-1">
+                <i class="bi bi-file-earmark-text-fill"></i>
+                <div>{{ document_name }}</div>
             </div>
         </div>
+        <div ref="scrollContainer" class="messages_container flex-grow-1 overflow-auto mb-3">
+            <div v-for="message in messages" class="mb-2 w-100 d-flex"
+                :class="{ 'justify-content-end': message.sender === 'user', 'justify-content-start': message.sender === 'ai' }">
+                <div v-if="message.sender === 'user'" class="user_message rounded-4 py-2 px-3"
+                    style="background-color: #efefef; max-width: 70%;">
+                    <div class="user_name mb-2" style="color: #6c6c6c; text-align: left;">You</div>
+                    <div class="user_text" style="text-align: left; white-space: pre-wrap;">{{ message.context }}</div>
+                </div>
+                <div v-else class="ai_message py-2 px-3" style=" max-width: 100%;">
+                    <div class="ai_name mb-2" style="color: #6c6c6c;">NeuroTutor</div>
+                    <div class="ai_text" v-html="convertMarkdown(message.context)"></div>
+                </div>
+            </div>
+        </div>
     </div>
-    <div class="write-message d-flex align-items-center p-3 rounded-4 mt-auto">
-        <textarea type="text" :placeholder="chatStage === 'new' ? 'Сначала загрузите файл' : 'Напишите ответ'" rows="1"
-            :disabled="sending || chatStage === 'new' || chatStage === 'returned_for_revision'"
-            class="flex-grow-1 form-control border-0 bg-transparent shadow-none resize-none" v-model="inputText"
-            @keydown.enter.exact.prevent="sendMessage" @input="autoResize" ref="textarea"></textarea>
-        <button class="btn send_button rounded-circle ms-3 mt-auto"
-            :disabled="sending || !inputText.trim() || chatStage === 'new' || chatStage === 'returned_for_revision'"
-            @click="sendMessage" title="Ответить">
-            <img src="@/assets/arrow.svg" alt="Отправить" width="15" />
-        </button>
+    <div class="py-3 mt-auto">
+        <div class="write-message d-flex align-items-center p-3 rounded-4">
+            <textarea type="text" :placeholder="chatStage === 'new' ? 'Сначала загрузите файл' : 'Напишите ответ'"
+                rows="1" :disabled="sending || chatStage === 'new' || chatStage === 'returned_for_revision'"
+                class="flex-grow-1 form-control border-0 bg-transparent shadow-none resize-none" v-model="inputText"
+                @keydown.enter.exact.prevent="sendMessage" @input="autoResize" ref="textarea"></textarea>
+            <button class="btn send_button rounded-circle ms-3 mt-auto"
+                :disabled="sending || !inputText.trim() || chatStage === 'new' || chatStage === 'returned_for_revision'"
+                @click="sendMessage" title="Ответить">
+                <img src="@/assets/arrow.svg" alt="Отправить" width="15" />
+            </button>
+        </div>
     </div>
 </template>
 

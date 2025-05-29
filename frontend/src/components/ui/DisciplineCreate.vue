@@ -1,5 +1,5 @@
 <template>
-    <div class="title mb-3 mt-5">Назовите дисциплину</div>
+    <div class="title mb-3 mt-3">Назовите дисциплину</div>
     <input type="text" class="discipline_name form-control rounded-3" v-model="title">
     <div class="title mb-3 mt-5">Загрузите документы</div>
     <input type="file" multiple class="add_documents form-control" @change="handleFiles">
@@ -15,7 +15,7 @@
         </div>
     </div>
 
-    <div class="d-flex justify-content-end mt-auto">
+    <div class="d-flex justify-content-end mt-auto py-3">
         <router-link class="btn cancel_button text-white rounded-3 d-flex align-items-center justify-content-center"
             :to="{ name: 'blank-area' }">Отмена</router-link>
         <button class="btn add_button text-white rounded-3 ms-3 d-flex align-items-center justify-content-center"

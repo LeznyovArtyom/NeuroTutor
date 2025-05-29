@@ -1,5 +1,5 @@
 <template>
-    <div class="container-fluid">
+    <div class="container-fluid" style="--bs-gutter-x: 0;">
         <!-- Левая панель -->
         <LeftPanel ref="leftPanel" :showPanel="showPanel" />
 
@@ -60,3 +60,11 @@ export default defineComponent({
     }
 })
 </script>
+
+<style>
+/* чтобы на уровне документа не было своего скролла */
+html, body {
+  height: 100%;
+  overflow: hidden;
+}
+</style>
