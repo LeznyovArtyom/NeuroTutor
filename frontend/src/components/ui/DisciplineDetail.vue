@@ -481,12 +481,12 @@ export default defineComponent({
         // Удалить работу
         async delete_work() {
             try {
-                const token = Cookies.get('access_token')
+                const access_token = Cookies.get('access_token')
                 await axios.delete(`/api/disciplines/${this.id}/work/${this.workToDelete.id}/delete`,
-                    { headers: { Authorization: `Bearer ${token}` } }
+                    { headers: { Authorization: `Bearer ${access_token}` } }
                 );
 
-                this.works = this.works.filter(w => w.id !== this.workToDelete.id);
+                await this.get_discipline_info();
             } catch (error) {
                 console.log(error);
                 if (axios.isAxiosError(error) && error.response?.status === 401) {

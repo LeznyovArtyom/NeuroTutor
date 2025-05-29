@@ -107,7 +107,22 @@ async def delete_work_from_discipline(discipline_id: int, work_id: int, token: A
     if not work:
         raise HTTPException(status_code=404, detail="Работа не найдена")
 
+    # сохраняем номер, который «освободится»
+    deleted_num = work.number 
+
     session.delete(work)
+    session.commit()
+
+    # ❷ сдвигаем все номера, которые были больше
+    session.exec(
+        update(WorkModel)
+        .where(
+            WorkModel.discipline_id == discipline_id,
+            WorkModel.number > deleted_num
+        )
+        .values(number=WorkModel.number - 1)
+        .execution_options(synchronize_session="fetch")
+    )
     session.commit()
 
     return JSONResponse({"message": "Работа успешно удалена из дисциплины"}, status_code=200)
