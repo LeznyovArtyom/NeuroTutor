@@ -7,16 +7,17 @@
     </div>
     <div class="d-flex align-items-center mt-3 gap-4 flex-wrap">
         <div class="title mt-1">Документы</div>
-        <div class="doc-chips d-flex flex-wrap gap-2 flex-grow-1">
+        <div v-if="work.documents.length" class="doc-chips d-flex flex-wrap gap-2 flex-grow-1">
             <span v-for="doc in work.documents" :key="doc.id" class="badge doc-chip text-dark bg-light border">
                 <i class="bi bi-file-earmark-text me-1"></i>{{ doc.name }}
             </span>
-            <span v-if="!work.documents.length" class="text-muted">—</span>
         </div>
+        <div v-else class="text-muted">Не заданы</div>
     </div>
     <div class="d-flex align-items-center mt-3 gap-4">
-        <div class="title">Раздел</div>
-        <div>{{ work.document_section }}</div>
+        <div class="title">Раздел / Тема / Глава</div>
+        <div v-if="work.document_section">{{ work.document_section }}</div>
+        <span v-else class="text-muted">Не задано</span>
     </div>
 
     <div class="d-flex align-items-center mt-5 gap-4" v-if="user?.role === 'student'">
