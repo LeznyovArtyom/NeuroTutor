@@ -1,7 +1,7 @@
 from sqlmodel import Session, delete
-from models import Document, DocumentChunk
-from assistant_core import extract_text
-from RAG.utils import split_into_chunks, embed
+from database.sql_models import Document, DocumentChunk
+from llm.assistant_core import extract_text
+from llm.RAG.rag_utils import split_into_chunks, embed
 import numpy as np
 
 

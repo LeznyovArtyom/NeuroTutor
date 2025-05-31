@@ -3,10 +3,10 @@ from pathlib import Path
 from io import BytesIO
 import PyPDF2
 import docx # python-docx
-from models import Chat as ChatModel, ChatStage, Work as WorkModel, UserWork as UserWorkModel, WorkStatus
+from database.sql_models import Chat as ChatModel, ChatStage, Work as WorkModel, UserWork as UserWorkModel, WorkStatus
 from sqlmodel import Session, select
-from model_utils import generate_once
-from RAG.rag_retrieve import retrieve
+from llm.llm_utils import generate_once
+from llm.RAG.rag_retrieve import retrieve
 
 
 # Извлечение текста из PDF / DOCX / TXT

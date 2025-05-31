@@ -4,8 +4,8 @@ from fastapi.concurrency import run_in_threadpool
 from typing import Annotated
 from pydantic import BaseModel
 from sqlmodel import Session, select
-from database import get_session
-from models import User as UserModel, Chat as ChatModel, Message as MessageModel
+from database.database import get_session
+from database.sql_models import User as UserModel, Chat as ChatModel, Message as MessageModel
 from core.security import oauth2_scheme, decode_access_token
 
 
@@ -210,7 +210,7 @@ async def add_new_message(session_id: int, message_data: Message, token: Annotat
 
 
 from pydantic import BaseModel
-from model_utils import generate_once
+from llm.llm_utils import generate_once
 
 
 class ChatRequest(BaseModel):

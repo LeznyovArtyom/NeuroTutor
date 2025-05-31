@@ -1,14 +1,12 @@
-from fastapi import APIRouter, HTTPException, Depends, Query, BackgroundTasks, UploadFile, File
+from fastapi import APIRouter, HTTPException, Depends, Query, UploadFile, File
 from fastapi.responses import JSONResponse
 from typing import Annotated
 from pydantic import BaseModel
 from sqlmodel import Session, select
-from database import get_session
-from models import User as UserModel, Chat as ChatModel, Message as MessageModel, UserWork as UserWorkModel, ChatStage, WorkStatus
+from database.database import get_session
+from database.sql_models import User as UserModel, Chat as ChatModel, Message as MessageModel, UserWork as UserWorkModel, ChatStage, WorkStatus
 from core.security import oauth2_scheme, decode_access_token
-from model_utils import generate_once
-from model_utils import generate_once_mistral
-from assistant_core import handle_checking_the_work_stage, handle_checking_the_corrected_work_stage, dialogue, set_user_work_status
+from llm.assistant_core import handle_checking_the_work_stage, handle_checking_the_corrected_work_stage, dialogue, set_user_work_status
 
 
 router = APIRouter()

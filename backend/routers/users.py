@@ -3,8 +3,8 @@ from fastapi.responses import JSONResponse
 from typing import Annotated
 from pydantic import BaseModel
 from sqlmodel import Session, select
-from database import get_session
-from models import User as UserModel
+from database.database import get_session
+from database.sql_models import User as UserModel
 from datetime import timedelta
 from core.security import get_password_hash, verify_password, create_access_token, ACCESS_TOKEN_EXPIRE_MINUTES, oauth2_scheme, decode_access_token
 

@@ -1,7 +1,7 @@
 import faiss, numpy as np
 from sqlmodel import Session, select
-from models import DocumentChunk, Document
-from RAG.utils import embed
+from database.sql_models import DocumentChunk, Document
+from llm.RAG.rag_utils import embed
 
 
 # one-time: собираем FAISS-индекс в памяти

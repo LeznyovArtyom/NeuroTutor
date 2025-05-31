@@ -1,8 +1,8 @@
 from fastapi import HTTPException, status
 from fastapi.security import OAuth2PasswordBearer
 from passlib.context import CryptContext
-import jwt
 from datetime import datetime, timedelta, timezone
+import jwt
 
 
 SECRET_KEY = "diplom"

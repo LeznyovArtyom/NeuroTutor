@@ -3,11 +3,11 @@ from fastapi.responses import JSONResponse
 from typing import Annotated, Optional, List
 from pydantic import BaseModel
 from sqlmodel import Session, select
-from database import get_session
-from models import User as UserModel, Discipline as DisciplineModel, Document as DocumentModel, TeacherStudent as TeacherStudentModel, UserWork as UserWorkModel, Work as WorkModel, StudentDiscipline as StudentDisciplineModel
+from database.database import get_session
+from database.sql_models import User as UserModel, Discipline as DisciplineModel, Document as DocumentModel, TeacherStudent as TeacherStudentModel, UserWork as UserWorkModel, Work as WorkModel, StudentDiscipline as StudentDisciplineModel
 import base64
 from core.security import oauth2_scheme, decode_access_token
-from RAG.rag_index import build_index, delete_index_for_document
+from llm.RAG.rag_index import build_index, delete_index_for_document
 
 
 router = APIRouter()

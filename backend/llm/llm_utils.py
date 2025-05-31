@@ -5,7 +5,7 @@ import torch
 from transformers import AutoModelForCausalLM, AutoTokenizer
 from peft import PeftModel
 from mistralai import Mistral
-import llm_config
+import llm.llm_config as llm_config
 
 
 # Однократная (кэшированная) загрузка модели из Hugging Face

@@ -3,8 +3,8 @@ from fastapi.responses import JSONResponse
 from typing import Annotated
 from pydantic import BaseModel
 from sqlmodel import Session, select, update, delete
-from database import get_session
-from models import User as UserModel, Discipline as DisciplineModel, Work as WorkModel, UserWork as UserWorkModel, StudentDiscipline as StudentDisciplineModel, WorkDocument as WorkDocumentModel
+from database.database import get_session
+from database.sql_models import User as UserModel, Discipline as DisciplineModel, Work as WorkModel, UserWork as UserWorkModel, StudentDiscipline as StudentDisciplineModel, WorkDocument as WorkDocumentModel
 from core.security import oauth2_scheme, decode_access_token
 
 
