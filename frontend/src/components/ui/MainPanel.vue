@@ -71,7 +71,7 @@ export default defineComponent({
   position: relative;
   height: 100vh;
   overflow: hidden; /* главная панель не скроллится */
-  transition: margin-left .3s ease;
+  transition: margin-left 0.3s ease, width 0.3s ease;
 }
 .panel_open   { margin-left: 16.6666%; width: 83.3333%; }
 .panel_closed { margin-left: 0;         width: 100%;     }
