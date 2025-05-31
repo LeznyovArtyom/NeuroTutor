@@ -1,26 +1,14 @@
-import os
+import os, aiohttp, asyncio
 from functools import lru_cache
-import torch
 from huggingface_hub import login
-from peft import PeftModel
+import torch
 from transformers import AutoModelForCausalLM, AutoTokenizer
+from peft import PeftModel
+from mistralai import Mistral
+import llm_config
 
 
-# Авторизация в HuggingFace
-# HF_TOKEN = os.getenv("HF_TOKEN")
-# if HF_TOKEN:
-login("...")
-
-
-BASE_MODEL_NAME = "google/gemma-3-1b-it"
-ADAPTER_PATH    = "fine-tuned-gemma"
-
-MAX_NEW_TOKENS  = 512
-TEMPERATURE     = 0.5
-TOP_P           = 0.9
-
-
-# Однократная (кэшированная) загрузка
+# Однократная (кэшированная) загрузка модели из Hugging Face
 @lru_cache
 def load_model():
     """
@@ -29,7 +17,7 @@ def load_model():
     """
     # токенизатор
     tokenizer = AutoTokenizer.from_pretrained(
-        ADAPTER_PATH,
+        llm_config.ADAPTER_PATH,
         use_fast=True,
         trust_remote_code=True,
     )
@@ -40,7 +28,7 @@ def load_model():
     device = "cuda" if torch.cuda.is_available() else "cpu"
 
     base = AutoModelForCausalLM.from_pretrained(
-        BASE_MODEL_NAME,
+        llm_config.BASE_MODEL_NAME,
         torch_dtype=dtype,
         device_map="auto",            # на CPU – просто «cpu»
         low_cpu_mem_usage=True,       # загружает блоками → меньше пик RAM
@@ -51,7 +39,7 @@ def load_model():
     # LoRA-адаптер
     model = PeftModel.from_pretrained(
         base,
-        ADAPTER_PATH,
+        llm_config.ADAPTER_PATH,
         torch_dtype=dtype,
         device_map="auto",
     )
@@ -60,11 +48,14 @@ def load_model():
     return tokenizer, model
 
 
-# Функция генерации
-def generate_once(prompt: str) -> str:
+# Обращение к дообученной локальной модели
+def generate_once_base_model(prompt: str) -> str:
     """
     Генерирует полный ответ модели (без стриминга).
     """
+    # Авторизация в HuggingFace
+    login(llm_config.HF_TOKEN)
+
     tok, mdl = load_model()
 
     inputs = tok(prompt, return_tensors="pt").to(mdl.device)
@@ -72,36 +63,77 @@ def generate_once(prompt: str) -> str:
     with torch.no_grad():
         out_ids = mdl.generate(
             **inputs,
-            max_new_tokens=MAX_NEW_TOKENS,
-            temperature=TEMPERATURE,
-            top_p=TOP_P,
+            max_new_tokens=llm_config.MAX_NEW_TOKENS,
+            temperature=llm_config.TEMPERATURE,
+            top_p=llm_config.TOP_P,
             eos_token_id=tok.eos_token_id,
         )
 
     return tok.decode(out_ids[0], skip_special_tokens=True)
 
 
-
-
 # Обращение к модели Mistral по API
-from mistralai import Mistral
-
-
-MISTRAL_MODEL   = "mistral-small-latest"
-MAX_NEW_TOKENS  = 512
-TEMPERATURE     = 0.5
-TOP_P           = 0.9
-
-
 async def generate_once_mistral(prompt: str) -> str:
-    api_key = os.getenv("MISTRAL_API_KEY", "...")
-    client  = Mistral(api_key=api_key)
+    client  = Mistral(api_key=llm_config.MISTRAL_API_KEY)
 
     response = client.chat.complete(
-        model="mistral-small-latest",
+        model=llm_config.MISTRAL_MODEL,
         messages=[
             {"role": "user", "content": prompt}
         ]
     )
     # Mistral возвращает сразу один choice
     return response.choices[0].message.content.strip()
+
+
+# Обращение к модели YandexGPT Lite по API
+async def generate_once_yagpt(prompt: str) -> str:
+    url = "https://llm.api.cloud.yandex.net/foundationModels/v1/completion"
+
+    headers = {
+        "Authorization": f"Bearer {llm_config.IAM_TOKEN}",
+        "Content-Type":  "application/json",
+        "X-Folder-Id":   llm_config.FOLDER_ID,
+    }
+
+    body = {
+        "modelUri": f"gpt://{llm_config.FOLDER_ID}/{llm_config.YANDEX_MODEL}/latest",
+
+        "completionOptions": {
+            "stream": False,
+            "temperature": llm_config.TEMPERATURE,
+            "maxTokens":  llm_config.MAX_NEW_TOKENS
+        },
+
+        "messages": [
+            {"role": "user", "text": prompt}
+        ]
+    }
+
+    async with aiohttp.ClientSession() as s:
+        async with s.post(url, json=body, headers=headers) as r:
+            r.raise_for_status()
+            data = await r.json()
+
+    return data["result"]["alternatives"][0]["message"]["text"].strip()
+
+
+# Сгенерировать ответ в соответствии с выбранно моделью
+async def generate_once(prompt: str) -> str:
+    if llm_config.CURRENT_MODEL == "base":
+        return await generate_once_base_model(prompt)
+
+    if llm_config.CURRENT_MODEL == "mistral":
+        return await generate_once_mistral(prompt)
+
+    if llm_config.CURRENT_MODEL == "yandex":
+        return await generate_once_yagpt(prompt)
+    
+    return
+
+
+# Тест YandexGPT
+if __name__ == "__main__":
+    async def _demo():
+        print(await generate_once_yagpt("Привет! Скажи что-нибудь."))
+    asyncio.run(_demo())

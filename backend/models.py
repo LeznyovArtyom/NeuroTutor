@@ -186,6 +186,20 @@ class Document(SQLModel, table=True):
         link_model=WorkDocument,
         sa_relationship_kwargs={"lazy": "selectin", "cascade": "all, delete"}
     )
+    chunks: List["DocumentChunk"] = Relationship(
+        back_populates="document",
+        sa_relationship_kwargs={"cascade": "all, delete"}
+    )
+
+
+class DocumentChunk(SQLModel, table=True):
+    __tablename__ = "document_chunk"
+    id: Optional[int] = Field(primary_key=True)
+    document_id: int = Field(foreign_key="document.id", index=True)
+    text: str = Field(sa_column=Column(Text()))
+    embedding: bytes = Field(sa_column=Column(LONGBLOB))
+    
+    document: Optional[Document] = Relationship(back_populates="chunks")
 
 
 class Work(SQLModel, table=True):

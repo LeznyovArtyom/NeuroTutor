@@ -7,6 +7,7 @@ from database import get_session
 from models import User as UserModel, Discipline as DisciplineModel, Document as DocumentModel, TeacherStudent as TeacherStudentModel, UserWork as UserWorkModel, Work as WorkModel, StudentDiscipline as StudentDisciplineModel
 import base64
 from core.security import oauth2_scheme, decode_access_token
+from RAG.rag_index import build_index, delete_index_for_document
 
 
 router = APIRouter()
@@ -97,14 +98,18 @@ async def add_new_discipline(discipline_data: Discipline, token: Annotated[str, 
 
     if discipline_data.documents:
         for document in discipline_data.documents:
+            raw = base64.b64decode(document.data)
+            # сохраняем новый документ
             new_document = DocumentModel(
                 name=document.name,
-                data=document.data,
+                data=raw,
                 discipline_id=new_discipline.id
             )
             session.add(new_document)
-        session.commit()
-        session.refresh(new_document)
+            session.commit()
+            session.refresh(new_document)
+            # создаем индекс
+            build_index(new_document, session)
 
     return JSONResponse({"id": new_discipline.id, "message": "Дисциплина успешно добавлена"}, status_code=201)
 
@@ -224,12 +229,18 @@ async def update_discipline(discipline_id: int, discipline_data: DisciplineUpdat
 
     if discipline_data.documents:
         for document in discipline_data.documents:
+            raw = base64.b64decode(document.data)
+            # сохраняем новый документ
             new_document = DocumentModel(
                 name=document.name,
-                data=document.data,
+                data=raw,
                 discipline_id=discipline.id
             )
             session.add(new_document)
+            session.commit()
+            session.refresh(new_document)
+            # создаем индекс
+            build_index(new_document, session)
 
     session.add(discipline)
     session.commit()
@@ -258,6 +269,10 @@ async def delete_discipline(discipline_id: int, token: Annotated[str, Depends(oa
     if not discipline:
         raise HTTPException(status_code=404, detail="Дисциплина не найдена")
 
+    # Удаляем индекс каждого документа дисциплины
+    for document in discipline.documents:
+        delete_index_for_document(document.id, session)
+    # Удаляем дисциплину
     session.delete(discipline)
     session.commit()
 
@@ -285,6 +300,9 @@ async def delete_document_from_discipline(discipline_id: int, document_id: int, 
     if not document:
         raise HTTPException(status_code=404, detail="Дисциплина не найдена")
     
+    # Удаляем индекс
+    delete_index_for_document(document.id, session)
+    # Удаляем документ
     session.delete(document)
     session.commit()
 

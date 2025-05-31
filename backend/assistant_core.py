@@ -1,11 +1,12 @@
 import json, re
-from models import Chat as ChatModel, ChatStage, Work as WorkModel, UserWork as UserWorkModel, WorkStatus
-from sqlmodel import Session, select
-import PyPDF2
-import docx # python-docx
 from pathlib import Path
 from io import BytesIO
-from model_utils import generate_once_mistral
+import PyPDF2
+import docx # python-docx
+from models import Chat as ChatModel, ChatStage, Work as WorkModel, UserWork as UserWorkModel, WorkStatus
+from sqlmodel import Session, select
+from model_utils import generate_once
+from RAG.rag_retrieve import retrieve
 
 
 # Извлечение текста из PDF / DOCX / TXT
@@ -76,7 +77,7 @@ async def handle_checking_the_work_stage(chat: ChatModel, session: Session) -> s
     )
     full_prompt = system_prompt + "\n\n" + user_prompt
     # запрос к модели
-    resp = await generate_once_mistral(full_prompt)
+    resp = await generate_once(full_prompt)
 
     # вырезаем JSON markdown из ответа
     text = resp.strip()
@@ -112,14 +113,34 @@ async def handle_checking_the_work_stage(chat: ChatModel, session: Session) -> s
     
     # Работа корректна - нужно начать dualogue
     # Просим модель сгенерировать один стартовый вопрос
-    sys = (
+
+    work = session.get(WorkModel, chat.work_id)
+
+    # Собираем «инструкцию» для RAG: JSON с {question, answer, topics}
+    instruction = (
         "Ты — цифровой преподаватель. "
-        "На основе отчёта сформируй ОДИН простой контрольный вопрос "
-        "и выпиши список ключевых тем (3-7 пунктов, в терминах предмета). "
-        "Верни JSON: {question, answer, topics:[...]}"
+        "На основе предоставленного отчёта сформулируй ОДИН простой контрольный вопрос "
+        "и выпиши список ключевых тем (3-7 пунктов, в терминах предмета).\n"
+        "Верни СТРОГО JSON вида:\n"
+        "{question, answer, topics:[...]}\n\n"
+        f"Отчёт студента:\n{file_text}"
     )
-    raw = await generate_once_mistral(sys + "\n\n" + file_text)
-    data = json.loads(re.search(r"\{.*\}", raw, re.S).group(0))
+
+    qa_raw = await rag_ask(instruction, work, session)
+    match_qa = re.search(r"\{[\s\S]*\}", qa_raw)
+    if not match_qa:
+        raise RuntimeError(f"RAG-LLM вернул неожиданный формат:\n{qa_raw}")
+    data = json.loads(match_qa.group(0))
+
+
+    # sys = (
+    #     "Ты — цифровой преподаватель. "
+    #     "На основе отчёта сформируй ОДИН простой контрольный вопрос "
+    #     "и выпиши список ключевых тем (3-7 пунктов, в терминах предмета). "
+    #     "Верни JSON: {question, answer, topics:[...]}"
+    # )
+    # raw = await generate_once(sys + "\n\n" + file_text)
+    # data = json.loads(re.search(r"\{.*\}", raw, re.S).group(0))
 
     chat.meta = json.dumps({
         "task": expected_task,
@@ -171,7 +192,7 @@ async def handle_checking_the_corrected_work_stage(chat: ChatModel, session: Ses
     )
     full_prompt = system_prompt + "\n\n" + user_prompt
     # запрос к модели
-    resp = await generate_once_mistral(full_prompt)
+    resp = await generate_once(full_prompt)
 
     # вырезаем JSON markdown из ответа
     text = resp.strip()
@@ -202,14 +223,32 @@ async def handle_checking_the_corrected_work_stage(chat: ChatModel, session: Ses
         
     # Работа корректна - нужно начать dualogue
     # Просим модель сгенерировать один стартовый вопрос
-    sys = (
+
+    work = session.get(WorkModel, chat.work_id)
+
+    instruction = (
         "Ты — цифровой преподаватель. "
-        "На основе отчёта сформируй ОДИН простой контрольный вопрос "
-        "и выпиши список ключевых тем (3-7 пунктов, в терминах предмета). "
-        "Верни JSON: {question, answer, topics:[...]}"
+        "На основе исправленного отчёта сформулируй ОДИН простой контрольный вопрос "
+        "и выпиши список ключевых тем (3-7 пунктов, в терминах предмета).\n"
+        "Верни СТРОГО JSON вида:\n"
+        "{question, answer, topics:[...]}\n\n"
+        f"Исправленный отчёт:\n{new_text}"
     )
-    raw = await generate_once_mistral(sys + "\n\n" + new_text)
-    data = json.loads(re.search(r"\{.*\}", raw, re.S).group(0))
+
+    qa_raw = await rag_ask(instruction, work, session)
+    match_qa = re.search(r"\{[\s\S]*\}", qa_raw)
+    if not match_qa:
+        raise RuntimeError(f"RAG-LLM вернул неожиданный формат:\n{qa_raw}")
+    data = json.loads(match_qa.group(0))
+
+    # sys = (
+    #     "Ты — цифровой преподаватель. "
+    #     "На основе отчёта сформируй ОДИН простой контрольный вопрос "
+    #     "и выпиши список ключевых тем (3-7 пунктов, в терминах предмета). "
+    #     "Верни JSON: {question, answer, topics:[...]}"
+    # )
+    # raw = await generate_once(sys + "\n\n" + new_text)
+    # data = json.loads(re.search(r"\{.*\}", raw, re.S).group(0))
 
     chat.meta = json.dumps({
         "task": expected_task,
@@ -251,7 +290,7 @@ async def dialogue(chat: ChatModel, user_message: str | None, session: Session) 
         "student_answer": user_message,
         "tries_done"   : tries
     }, ensure_ascii=False)
-    raw = await generate_once_mistral(sys_prompt + "\n\n" + user_prompt)
+    raw = await generate_once(sys_prompt + "\n\n" + user_prompt)
     result = json.loads(re.search(r"\{.*\}", raw, re.S).group(0))
 
     quality   = result["quality"] # correct | partial | wrong
@@ -296,10 +335,16 @@ async def dialogue(chat: ChatModel, user_message: str | None, session: Session) 
     next_topic = topics_left.pop(0)
     q_prompt = (
         "Сформулируй один проверочный вопрос по теме: " + next_topic +
-        "\nВерни JSON: {q, a}"
+        "\nВерни строго JSON вида: {q, a}"
     )
-    qa_raw = await generate_once_mistral(q_prompt)
-    qa = json.loads(re.search(r"\{.*\}", qa_raw, re.S).group(0))
+    # qa_raw = await generate_once(q_prompt)
+    work = session.get(WorkModel, chat.work_id)
+
+    qa_raw = await rag_ask(q_prompt, work, session)
+    match_qa = re.search(r"\{[\s\S]*\}", qa_raw)
+    if not match_qa:
+        raise RuntimeError(f"RAG-LLM вернул неожиданный формат:\n{qa_raw}")
+    qa = json.loads(match_qa.group(0))
 
     # Обновляем meta
     meta.update({
@@ -312,3 +357,34 @@ async def dialogue(chat: ChatModel, user_message: str | None, session: Session) 
     session.add(chat); session.commit()
 
     return f"{feedback}\n\nВопрос: {qa['q']}"
+
+
+async def rag_ask(prompt_text: str, work: WorkModel, session: Session) -> str:
+    """
+    1) Извлекаем из work список документов и section
+    2) Собираем контекст через RAG.retrive (FAISS+бд) по этим документам и section
+    3) Склеиваем контекст с переданной «инструкцией» (prompt_text)
+    4) Отправляем полученный текст в generate_once и возвращаем ответ
+    """
+    discipline_id = work.discipline_id
+
+    # Документы, которые преподаватель связал с этой работой
+    doc_ids = [d.id for d in work.documents] or None
+    # Раздел/тема/глава, которую указал преподаватель для этой работы
+    section = work.document_section or None
+
+    # Формируем контекст семантически по разделу  вопросу:
+    context = retrieve(
+        question        = prompt_text,
+        session         = session,
+        discipline_id   = discipline_id,
+        scope_docs      = doc_ids,
+        scope_section   = section
+    )
+    
+    prompt = (
+        "Ты цифровой преподаватель. Используй КОНТЕКСТ ниже, чтобы сгенерировать ответ.\n\n "
+        f"КОНТЕКСТ:\n{context}\n\n"
+        f"ВОПРОС:\n{prompt_text}"
+    )
+    return await generate_once(prompt)
