@@ -27,7 +27,7 @@
                 <div>{{ document_name }}</div>
             </div>
         </div>
-        <div ref="scrollContainer" class="messages_container flex-grow-1 overflow-auto mb-3">
+        <div ref="scrollContainer" class="messages_container mb-3">
             <div v-for="message in messages" class="mb-2 w-100 d-flex"
                 :class="{ 'justify-content-end': message.sender === 'user', 'justify-content-start': message.sender === 'ai' }">
                 <div v-if="message.sender === 'user'" class="user_message rounded-4 py-2 px-3"
@@ -42,7 +42,7 @@
             </div>
         </div>
     </div>
-    <div class="py-3 mt-auto">
+    <div class="py-3" style="position: sticky; bottom: 0; background: white; z-index: 10;">
         <div class="write-message d-flex align-items-center p-3 rounded-4">
             <textarea type="text" :placeholder="chatStage === 'new' ? 'Сначала загрузите файл' : 'Напишите ответ'"
                 rows="1" :disabled="sending || chatStage === 'new' || chatStage === 'returned_for_revision'"
@@ -244,8 +244,22 @@ export default defineComponent({
         },
         // Прокрутка до конца чата
         scrollToEnd() {
-            const cont = this.$refs.scrollContainer as HTMLElement | undefined;
-            if (cont) cont.scrollTop = cont.scrollHeight;
+            // 1) Достаём наш контейнер сообщений
+            const container = this.$refs.scrollContainer as HTMLElement | undefined;
+            if (!container) return;
+
+            // 2) Ищем по дереву «вверх» первый родительский элемент с классом .main_area
+            const mainArea = container.closest('.main_area') as HTMLElement | null;
+
+            // 3) Если нашли, «прокручиваем» его вниз
+            if (mainArea) {
+                mainArea.scrollTop = mainArea.scrollHeight;
+            }
+            // На всякий случай: если почему-то .main_area не найден (неверная структура),
+            // прокручиваем сам контейнер сообщений
+            else {
+                container.scrollTop = container.scrollHeight;
+            }
         },
         /* авто-рост textarea */
         autoResize(e: Event) {
