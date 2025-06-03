@@ -40,6 +40,6 @@ ENV PYTHONPATH=/app
 
 CMD service mariadb start && \
     sleep 5 && \
-    python -m backend.database && \
+    python -m backend.database.database && \
     service nginx start && \
     gunicorn backend.main:app -k uvicorn.workers.UvicornWorker -b 0.0.0.0:8000

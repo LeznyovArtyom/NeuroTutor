@@ -68,8 +68,7 @@ async def handle_checking_the_work_stage(chat: ChatModel, session: Session) -> s
         "Верни объект JSON с ключами: "
         "'status' ('ok' или 'needs_fix'), "
         "'feedback' (краткое описание строки), "
-        "'missing' (массив строк, необязательно), "
-        "'questions' (массив из {'q','a'}, только если статус 'ok')."
+        "'missing' (массив строк, необязательно)."
     )
     user_prompt = (
         f"Описание задания: {expected_task}\n"
@@ -100,7 +99,7 @@ async def handle_checking_the_work_stage(chat: ChatModel, session: Session) -> s
         "missing": missing
     })
 
-    # Если работает требует доработки
+    # Если работа требует доработки
     if status != 'ok':
         message = f"❌ Работа требует доработки: {feedback}"
         if missing:
@@ -184,7 +183,6 @@ async def handle_checking_the_corrected_work_stage(chat: ChatModel, session: Ses
         "  fixed: true или false,\n"
         "  missing: [массив оставшихся недоработок],\n"
         "  feedback: \"краткий комментарий\".\n"
-        "  questions: (массив из {'q','a'}, только если fixed = true).\n"
     )
     user_prompt = (
         "Старая версия отчёта:\n" + original_excerpt + "\n\n"

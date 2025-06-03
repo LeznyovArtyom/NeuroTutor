@@ -51,8 +51,8 @@ class StudentDiscipline(SQLModel, table=True):
 
 class WorkDocument(SQLModel, table=True):
     __tablename__ = "work_document"
-    work_id: int = Field(foreign_key="work.id", primary_key=True)
-    document_id: int  = Field(foreign_key="document.id", primary_key=True)
+    work_id: int = Field(sa_column=Column(ForeignKey("work.id", ondelete="CASCADE"), primary_key=True))
+    document_id: int = Field(sa_column=Column(ForeignKey("document.id", ondelete="CASCADE"), primary_key=True))
 
 
 class UserWork(SQLModel, table=True):
