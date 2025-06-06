@@ -4,6 +4,7 @@ from datetime import datetime
 from sqlalchemy.dialects.mysql import LONGBLOB
 from enum import Enum
 from sqlalchemy import Enum as SQLEnum
+from sqlalchemy import String
 
 
 class UserRole(str, Enum):
@@ -65,7 +66,8 @@ class UserWork(SQLModel, table=True):
         back_populates="user_work",
         sa_relationship_kwargs={
             "cascade": "all, delete-orphan",  # удаляем сообщения из сессии
-            "passive_deletes": True           # и позволяем СУБД самой каскадить
+            "passive_deletes": True,           # и позволяем СУБД самой каскадить
+            "overlaps": "user,chats"
         }
     )
 
@@ -78,7 +80,6 @@ class User(SQLModel, table=True):
     last_name: str = Field(max_length=50)
     first_name: str = Field(max_length=50)
     role: UserRole = Field()
-    # role: UserRole = Field(default=UserRole.STUDENT)
 
     disciplines: List["Discipline"] = Relationship(back_populates="teacher", sa_relationship_kwargs={"cascade": "all, delete"})
     # дисциплины, в которых участвует студент
@@ -90,7 +91,10 @@ class User(SQLModel, table=True):
     works: List["Work"] = Relationship(
         back_populates="students",
         link_model=UserWork,
-        sa_relationship_kwargs={"passive_deletes": True}
+        sa_relationship_kwargs={
+            "passive_deletes": True,
+            "overlaps": "chats,user_work"
+        }
     )
     students: List["User"] = Relationship(
         back_populates="teachers",
@@ -109,7 +113,13 @@ class User(SQLModel, table=True):
             "secondaryjoin": "User.id==TeacherStudent.teacher_id",
         },
     )
-    chats: List["Chat"] = Relationship(back_populates="user", sa_relationship_kwargs={"cascade": "all, delete"})
+    chats: List["Chat"] = Relationship(
+        back_populates="user", 
+        sa_relationship_kwargs={
+            "cascade": "all, delete",
+            "overlaps": "user_work,chats"
+        }
+    )
     
 
 class Chat(SQLModel, table=True):
@@ -134,10 +144,22 @@ class Chat(SQLModel, table=True):
         ),
     )
 
-    user_work: Optional[UserWork] = Relationship(back_populates="chats")
-    user: Optional[User] = Relationship(back_populates="chats")
-    messages: List["Message"] = Relationship(back_populates="chat", sa_relationship_kwargs={"passive_deletes": True})
-    work: Optional["Work"] = Relationship(back_populates="chats")
+    user_work: Optional[UserWork] = Relationship(
+        back_populates="chats", 
+        sa_relationship_kwargs={"overlaps": "user,chats"}
+    )
+    user: Optional[User] = Relationship(
+        back_populates="chats", 
+        sa_relationship_kwargs={"overlaps": "user_work,chats"}
+    )
+    messages: List["Message"] = Relationship(
+        back_populates="chat", 
+        sa_relationship_kwargs={"passive_deletes": True}
+    )
+    work: Optional["Work"] = Relationship(
+        back_populates="chats", 
+        sa_relationship_kwargs={"overlaps": "user_work,chats"}
+    )
  
 
 class Message(SQLModel, table=True):
@@ -221,6 +243,12 @@ class Work(SQLModel, table=True):
     students: List["User"] = Relationship(
         back_populates="works",
         link_model=UserWork,
-        sa_relationship_kwargs={"passive_deletes": True,}
+        sa_relationship_kwargs={
+            "passive_deletes": True,
+            "overlaps": "chats,user_work"
+        }
     )
-    chats: List["Chat"] = Relationship(back_populates="work")
+    chats: List["Chat"] = Relationship(
+        back_populates="work", 
+        sa_relationship_kwargs={"overlaps": "user_work,students"}
+    )
