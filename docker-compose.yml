@@ -1,16 +1,18 @@
 version: '3.9'
 
 services:
-  app:
+  tutor:
     build: .
-    container_name: ai-tutor-app
+    container_name: ai-tutor
     ports:
-      - "80:80"        # фронтенд (nginx)
-      - "8000:8000"    # backend (FastAPI)
+      - "5001:80"      # фронтенд (nginx)
+      - "8001:8000"    # backend (FastAPI)
     volumes:
       - ./backend:/app/backend
       - ./frontend:/app/frontend
     environment:
       - PYTHONPATH=/app
       - HF_TOKEN=${HF_TOKEN}
+      - YC_IAM_TOKEN=${YC_IAM_TOKEN}
+      - YC_FOLDER_ID=${YC_FOLDER_ID}
     restart: unless-stopped

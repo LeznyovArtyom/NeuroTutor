@@ -18,8 +18,3 @@ app.include_router(disciplines.router)
 app.include_router(works.router)
 app.include_router(students.router)
 app.include_router(chats.router)
-
-
-# Получить чат в режиме Помощь
-
-# Получить чат в режиме Сдача работы

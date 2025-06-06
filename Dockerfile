@@ -18,7 +18,11 @@ RUN apt-get update && \
 
 WORKDIR /app
 
-COPY --from=frontend /app/frontend/dist /usr/share/nginx/html
+COPY --from=frontend /app/frontend/dist /usr/share/nginx/html/tutor/
+
+COPY backend/requirements.txt  ./requirements.txt
+
+RUN pip install --no-cache-dir --prefer-binary -r requirements.txt
 
 COPY backend/ ./backend
 WORKDIR /app/backend
@@ -28,8 +32,11 @@ RUN pip install --no-cache-dir -q \
       -f https://download.pytorch.org/whl/cpu/torch_stable.html
 
 RUN service mariadb start && \
-    mariadb -e "CREATE DATABASE IF NOT EXISTS NeuroTutor;" && \
-    mariadb -e "ALTER USER 'root'@'localhost' IDENTIFIED BY 'app_password'; FLUSH PRIVILEGES;"
+    sleep 3 && \
+    mariadb -u root -e "CREATE DATABASE IF NOT EXISTS NeuroTutor;" && \
+    mariadb -u root -e "CREATE USER IF NOT EXISTS 'tutor'@'%' IDENTIFIED BY 'tutor_pass';" && \
+    mariadb -u root -e "GRANT ALL PRIVILEGES ON NeuroTutor.* TO 'tutor'@'%';" && \
+    mariadb -u root -e "FLUSH PRIVILEGES;"
 
 COPY nginx.conf /etc/nginx/sites-available/default
 

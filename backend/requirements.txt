@@ -11,7 +11,14 @@ gunicorn
 pymysql
 bitsandbytes
 accelerate
-huggingface-hub
+PyPDF2==3.0.0
+python-docx
+aiohttp
+python-multipart==0.0.6
+huggingface-hub==0.12.0
+numpy==1.23.5
+faiss-cpu==1.7.3
+sentence-transformers==2.2.2
 
 # ---------- PyTorch (CPU) ----------
 --extra-index-url https://download.pytorch.org/whl/cpu     # сначала ссылка на колёса
