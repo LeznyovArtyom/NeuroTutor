@@ -41,6 +41,15 @@
             <input type="text" class="form-control section_input mt-3" v-model="work.document_section">
         </div>
     </div>
+    <div class="mt-3">
+        <div class="title">Модель</div>
+        <select class="model_type form-select mt-2" v-model="work.model_type">
+            <option value="base">Базовая</option>
+            <option value="fine_tuned">Дообученная</option>
+            <option value="rag">RAG</option>
+            <option value="fine_tuned_rag">Дообученная + RAG</option>
+        </select>
+    </div>
     <div class="d-flex justify-content-end mt-auto py-3">
         <router-link
             class="btn action_button cancel_button text-white rounded-3 d-flex align-items-center justify-content-center"
@@ -75,14 +84,16 @@ export default defineComponent({
                 task: '',
                 number: 0,
                 document_ids: [] as number[],
-                document_section: ''
+                document_section: '',
+                model_type: ''
             },
             originalWork: {
                 name: '',
                 task: '',
                 number: 0,
                 document_ids: [] as number[],
-                document_section: ''
+                document_section: '',
+                model_type: ''
             },
             documents: [] as Array<{ id: number; name: string }>,
             workCount: 0
@@ -152,6 +163,7 @@ export default defineComponent({
                 this.work.number = response.data.Work.number;
                 this.work.document_ids = response.data.Work.document_ids ?? response.data.Work.documents.map((d: {id:number}) => d.id);
                 this.work.document_section = response.data.Work.document_section;
+                this.work.model_type = response.data.Work.model_type;
 
                 this.documents = response.data.Work.documents;
 
@@ -191,7 +203,7 @@ export default defineComponent({
             try {
                 const accessToken = Cookies.get('access_token');
 
-                const updatedFields: { name?: string, task?: string, number?: number, document_id?: number, document_ids?: number[], document_section?: string } = {};
+                const updatedFields: { name?: string, task?: string, number?: number, document_id?: number, document_ids?: number[], document_section?: string, model_type?: string } = {};
                 if (this.originalWork.name !== this.work.name) {
                     updatedFields.name = this.work.name.trim();
                 }
@@ -206,6 +218,9 @@ export default defineComponent({
                 }
                 if (this.originalWork.document_section !== this.work.document_section) {
                     updatedFields.document_section = this.work.document_section.trim();
+                }
+                if (this.originalWork.model_type !== this.work.model_type) {
+                    updatedFields.model_type = this.work.model_type;
                 }
 
                 if (Object.keys(updatedFields).length === 0) {
@@ -252,6 +267,10 @@ export default defineComponent({
     margin-top: 1px;
     max-height: 155px;
     overflow-y: auto;
+}
+
+.model_type {
+    width: 350px;
 }
 
 .section_container {

@@ -38,6 +38,14 @@ class WorkStatus(str, Enum):
     FAILED      = "Отклонена"
 
 
+# Тип языковой модели
+class ModelType(str, Enum):
+    BASE = "base"                      # Базовая без дообучения и без контекста
+    FINE_TUNED = "fine_tuned"          # Дообученная (LoRA/PEFT)
+    RAG = "rag"                        # Базовая с RAG
+    FINE_TUNED_RAG = "fine_tuned_rag"  # Дообученная с RAG
+
+
 class TeacherStudent(SQLModel, table=True):
     __tablename__ = "teacher_student"
     teacher_id: Optional[int] = Field(sa_column=Column(ForeignKey("user.id", ondelete="CASCADE"), primary_key=True))
@@ -230,9 +238,15 @@ class Work(SQLModel, table=True):
     name: str = Field(max_length=255)
     task: Optional[str] = Field(sa_column=Column(Text()))
     number: int = Field(nullable=False)
-    
     document_section: Optional[str] = Field(max_length=255)
     discipline_id: Optional[int] = Field(sa_column=Column(ForeignKey("discipline.id", ondelete="CASCADE")))
+    model_type: ModelType = Field(
+        sa_column=Column(
+            SQLEnum(ModelType, name="model_type_enum"),
+            nullable=False,
+            default=ModelType.BASE
+        )
+    )
 
     discipline: Optional[Discipline] = Relationship(back_populates="works", sa_relationship_kwargs={"passive_deletes": True})
     documents: List[Document] = Relationship(

@@ -4,7 +4,7 @@ from typing import Annotated
 from pydantic import BaseModel
 from sqlmodel import Session, select, update, delete
 from database.database import get_session
-from database.sql_models import User as UserModel, Discipline as DisciplineModel, Work as WorkModel, UserWork as UserWorkModel, StudentDiscipline as StudentDisciplineModel, WorkDocument as WorkDocumentModel
+from database.sql_models import User as UserModel, Discipline as DisciplineModel, Work as WorkModel, UserWork as UserWorkModel, StudentDiscipline as StudentDisciplineModel, WorkDocument as WorkDocumentModel, ModelType
 from core.security import oauth2_scheme, decode_access_token
 
 
@@ -17,6 +17,7 @@ class Work(BaseModel):
     number: int
     document_ids: list[int] = []
     document_section: str | None = None
+    model_type: ModelType
 
 
 class WorkUpdate(BaseModel):
@@ -25,6 +26,7 @@ class WorkUpdate(BaseModel):
     number: int | None = None
     document_ids: list[int] | None = None
     document_section: str | None = None
+    model_type: ModelType | None = None
 
 
 class AddStudentsToWork(BaseModel):
@@ -73,7 +75,8 @@ async def add_new_work_to_discipline(discipline_id: int, work_data: Work, token:
         task=work_data.task,
         number=work_data.number,
         document_section=work_data.document_section,
-        discipline_id=discipline_id
+        discipline_id=discipline_id,
+        model_type=work_data.model_type
     )
     session.add(new_work)
     session.commit()
@@ -169,6 +172,7 @@ async def get_work_info(discipline_id: int, work_id: int, token: Annotated[str, 
             } for document in work.documents 
         ],
         "document_section": work.document_section,
+        "model_type": work.model_type,
         "students": [
             {
                 "id": student.id,
@@ -268,6 +272,8 @@ async def update_discipline(discipline_id: int, work_id: int, work_data: WorkUpd
             session.add(WorkDocumentModel(work_id=work_id, document_id=doc_id))
     if work_data.document_section is not None:
         work.document_section = work_data.document_section
+    if work_data.model_type is not None:
+        work.model_type = work_data.model_type
 
     session.add(work)
     session.commit()

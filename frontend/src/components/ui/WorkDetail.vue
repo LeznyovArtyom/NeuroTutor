@@ -19,6 +19,10 @@
         <div v-if="work.document_section">{{ work.document_section }}</div>
         <span v-else class="text-muted">Не задано</span>
     </div>
+    <div class="d-flex align-items-center mt-3 gap-4">
+        <div class="title">Модель</div>
+        <div v-if="work.model_type">{{ getModelTypeLabel(work.model_type) }}</div>
+    </div>
 
     <div class="d-flex align-items-center mt-5 gap-4" v-if="user?.role === 'student'">
         <div class="title">Статус сдачи работы</div>
@@ -188,6 +192,7 @@ export default defineComponent({
                 number: 0,
                 documents: [] as { id: number; name: string }[],
                 document_section: '',
+                model_type: '',
                 status: ''
             },
             // markdown для рендеринга задания работы
@@ -226,6 +231,7 @@ export default defineComponent({
                 this.work.number = response.data.Work.number;
                 this.work.documents = response.data.Work.documents;
                 this.work.document_section = response.data.Work.document_section;
+                this.work.model_type = response.data.Work.model_type;
                 if (response.data.Work.status) {
                     this.work.status = response.data.Work.status;
                 }
@@ -243,6 +249,16 @@ export default defineComponent({
                     console.error('Произошла ошибка при получении информации о работе:', error);
                 }
             }
+        },
+        // Преобразование model_type в читаемый формат
+        getModelTypeLabel(modelType: string): string {
+            const labels: Record<string, string> = {
+                base: 'Базовая',
+                fine_tuned: 'Дообученная',
+                rag: 'RAG',
+                fine_tuned_rag: 'Дообученная + RAG'
+            };
+            return labels[modelType] || modelType;
         },
         // Получить студентов дисциплины
         async fetch_discipline_students() {

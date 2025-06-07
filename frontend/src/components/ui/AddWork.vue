@@ -41,6 +41,15 @@
             <input type="text" class="form-control section_input mt-3" v-model="work.document_section">
         </div>
     </div>
+    <div class="mt-3">
+        <div class="title">Модель</div>
+        <select class="model_type form-select mt-2" v-model="work.model_type">
+            <option value="base">Базовая</option>
+            <option value="fine_tuned">Дообученная</option>
+            <option value="rag">RAG</option>
+            <option value="fine_tuned_rag">Дообученная + RAG</option>
+        </select>
+    </div>
     <div class="d-flex justify-content-end mt-auto py-3">
         <router-link
             class="btn action_button cancel_button text-white rounded-3 d-flex align-items-center justify-content-center"
@@ -71,7 +80,8 @@ export default defineComponent({
                 task: '',
                 number: 0,
                 document_ids: [] as number[],
-                document_section: ''
+                document_section: '',
+                model_type: 'base' as 'base' | 'fine_tuned' | 'rag' | 'fine_tuned_rag'
             },
             documents: [] as Array<{ id: number; name: string }>
         }
@@ -138,7 +148,8 @@ export default defineComponent({
                     task: this.work.task,
                     number: this.work.number,
                     document_ids: this.work.document_ids,
-                    document_section: this.work.document_section
+                    document_section: this.work.document_section,
+                    model_type: this.work.model_type
                 }
 
                 await axios.post(`/api/disciplines/${this.id}/work/add`,
@@ -203,6 +214,10 @@ export default defineComponent({
     overflow-y: auto;
     /* scroll-behavior: smooth; */
     /* плавная прокрутка */
+}
+
+.model_type {
+    width: 350px;
 }
 
 .section_container {
