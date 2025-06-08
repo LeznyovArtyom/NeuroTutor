@@ -143,22 +143,60 @@ async def upload_work(chat_id: int, token: Annotated[str, Depends(oauth2_scheme)
     data = await file.read()
     if not data:
         raise HTTPException(400, "Загруженный файл пуст или испорчен")
-    chat.document_data = data
-    chat.document_name = file.filename
-    chat.stage = ChatStage.CHECKING_THE_WORK if chat.meta is None else ChatStage.CHECKING_CORRECTED_WORK
-    session.add(chat); 
-    session.commit(); 
+    
+    # Определяем, в какой этап будем переводить
+    next_stage = ChatStage.CHECKING_THE_WORK if chat.meta is None else ChatStage.CHECKING_CORRECTED_WORK
+    
+    # Начинаем ручную транзакцию
+    try:
+        # Помечаем чат, но не делаем session.commit()
+        chat.document_data = data
+        chat.document_name = file.filename
+        chat.stage = next_stage
+        session.add(chat)
+        session.flush()   # отправляем в БД, но не коммитим
+
+        set_user_work_status(chat, session, WorkStatus.IN_PROGRESS)
+
+        # вызываем LLM-проверку
+        if next_stage == ChatStage.CHECKING_THE_WORK:
+            # запускаем проверку работы
+            assistant_reply = await handle_checking_the_work_stage(chat, session)
+        else:
+            # запускаем проверку исправленной работы
+            assistant_reply = await handle_checking_the_corrected_work_stage(chat, session)
+
+    except Exception as e:
+        # Если что-то упало (включая любые ошибки LLM) — откатываем все изменения
+        session.rollback()
+        # Добавляем в чат сообщение об ошибке
+        assistant_reply = (
+            "⚠️ Произошла ошибка при обращении к модели. "
+            "Пожалуйста, попробуйте загрузить файл ещё раз чуть позже."
+        )
+        ai_message = MessageModel(chat_id=chat_id, sender="ai", text=assistant_reply)
+        session.add(ai_message)
+        session.commit()
+        session.refresh(ai_message)
+
+        return {
+            "ai_message": {
+                "id": ai_message.id,
+                "sender": ai_message.sender,
+                "context": ai_message.text,
+                "created_at": ai_message.created_at.isoformat()
+            },
+            "chat": {
+                "stage": chat.stage,
+                "document_name": chat.document_name
+            }
+        }
+
+    # Если LLM всё отработал без исключений — коммитим изменения
+    session.commit()
     session.refresh(chat)
 
-    set_user_work_status(chat, session, WorkStatus.IN_PROGRESS)
-
-    if chat.stage == ChatStage.CHECKING_THE_WORK:
-        # запускаем проверку работы
-        assistant_reply = await handle_checking_the_work_stage(chat, session)
-    else:
-        # запускаем проверку исправленной работы
-        assistant_reply = await handle_checking_the_corrected_work_stage(chat, session)
-
+    # Сохраняем ответ ассистента
     ai_message = MessageModel(chat_id=chat_id, sender="ai", text=assistant_reply)
     session.add(ai_message); 
     session.commit(); 

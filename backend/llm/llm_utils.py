@@ -6,6 +6,9 @@ from transformers import AutoModelForCausalLM, AutoTokenizer
 from peft import PeftModel
 from mistralai import Mistral
 import llm.llm_config as llm_config
+from llm.RAG.rag_retrieve import retrieve
+from database.sql_models import Work as WorkModel, ModelType
+from sqlmodel import Session
 
 
 # Однократная (кэшированная) загрузка модели из Hugging Face
@@ -48,7 +51,7 @@ def load_model():
     return tokenizer, model
 
 
-# Обращение к дообученной локальной модели
+# Сгенерировать ответ с базовой моделью
 def generate_once_base_model(prompt: str) -> str:
     """
     Генерирует полный ответ модели (без стриминга).
@@ -70,6 +73,77 @@ def generate_once_base_model(prompt: str) -> str:
         )
 
     return tok.decode(out_ids[0], skip_special_tokens=True)
+
+
+# Сгенерировать ответ с дообученной моделью
+def generate_once_finetuned(prompt: str) -> str:
+    return generate_once_base_model(prompt)
+
+
+# Общая функция для формирования RAG-промпта
+def build_rag_prompt(prompt_text: str, work: WorkModel, session: Session) -> str:
+    """
+    1) Извлекаем из work список документов и section
+    2) Получаем RAG-контекст через retrieve(...)
+    3) Склеиваем контекст + исходный prompt_text
+    """
+    discipline_id = work.discipline_id
+    doc_ids       = [d.id for d in work.documents] or None
+    section       = work.document_section or None
+
+    context = retrieve(
+        question      = prompt_text,
+        session       = session,
+        discipline_id = discipline_id,
+        scope_docs    = doc_ids,
+        scope_section = section
+    )
+
+    full_prompt = (
+        "Ты цифровой преподаватель. Используй КОНТЕКСТ ниже, чтобы сгенерировать ответ.\n\n"
+        f"КОНТЕКСТ:\n{context}\n\n"
+        f"ВОПРОС:\n{prompt_text}"
+    )
+    return full_prompt
+
+
+# Сгенерировать ответ с базовой моделью + RAG
+async def generate_once_rag(prompt_text: str, work: WorkModel, session: Session) -> str:
+    full_prompt = build_rag_prompt(prompt_text, work, session)
+    return generate_once_base_model(full_prompt)
+
+
+# Сгенерировать ответ с дообученной моделью + RAG
+async def generate_once_finetuned_rag(prompt_text: str, work: WorkModel, session: Session) -> str:
+    full_prompt = build_rag_prompt(prompt_text, work, session)
+    return await generate_once_finetuned(full_prompt)
+
+
+# Сгенерировать ответ в соответствии с выбранным типом модели
+async def generate_once(prompt: str, work: WorkModel | None = None, session: Session | None = None) -> str:
+    """
+    В зависимости от work.model_type выбираем один из 4 режимов:
+        - base            → базовая (без дообучения, без RAG)
+        - fine_tuned      → дообученная (LoRA или подобная)
+        - rag             → базовая + RAG
+        - fine_tuned_rag  → дообученная + RAG
+    """
+    return await generate_once_yagpt(prompt)
+    mode = work.model_type
+
+    if mode == ModelType.BASE:
+        return await generate_once_base_model(prompt)
+
+    if mode == ModelType.FINE_TUNED:
+        return await generate_once_finetuned(prompt)
+
+    if mode == ModelType.RAG:
+        return await generate_once_rag(prompt, work, session)
+
+    if mode == ModelType.FINE_TUNED_RAG:
+        return await generate_once_finetuned_rag(prompt, work, session)
+
+    raise RuntimeError(f"Неизвестный режим модели: {mode}")
 
 
 # Обращение к модели Mistral по API
@@ -116,20 +190,6 @@ async def generate_once_yagpt(prompt: str) -> str:
             data = await r.json()
 
     return data["result"]["alternatives"][0]["message"]["text"].strip()
-
-
-# Сгенерировать ответ в соответствии с выбранно моделью
-async def generate_once(prompt: str) -> str:
-    if llm_config.CURRENT_MODEL == "base":
-        return await generate_once_base_model(prompt)
-
-    if llm_config.CURRENT_MODEL == "mistral":
-        return await generate_once_mistral(prompt)
-
-    if llm_config.CURRENT_MODEL == "yandex":
-        return await generate_once_yagpt(prompt)
-    
-    return
 
 
 # Тест YandexGPT
